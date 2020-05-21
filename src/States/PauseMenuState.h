@@ -21,10 +21,8 @@ private:
     void goBackToInGame();
 
     sf::View menuView;
-    sf::Font menuFont;
     sf::Clock clock;
     sf::Sound sound;
-    sf::Music pauseMenuMusic;
     std::vector<sf::Text> pauseMenuText;
     std::vector<sf::Color> pauseColorStates = {TMConfig::gameOverMenuColor, TMConfig::gameWordFontColor};
     unsigned int pauseColorIndex = 0;

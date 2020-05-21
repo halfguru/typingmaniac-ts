@@ -14,30 +14,29 @@ GameOverState::GameOverState(StateMachine *stateMachine)
     pos *= 0.5f;
     menuView.setCenter(pos);
 
-    if (!menuFont.loadFromFile(TMConfig::fontPath.string()))
-    {
-        LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Can't load " << TMConfig::fontPath);
-    }
-
     if (!gameOverMusic.openFromFile(TMAssets::gameOverMusicPath.string()))
     {
         LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Can't load " << TMAssets::gameOverMusicPath);
     }
 
     gameOverMenuText.resize(2);
-    gameOverMenuText[0].setFont(menuFont);
+    gameOverMenuText[0].setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     gameOverMenuText[0].setString("GAME OVER");
     gameOverMenuText[0].setCharacterSize(TMConfig::gameOverMenuFontSize);
     gameOverMenuText[0].setFillColor(TMConfig::gameOverMenuColor);
     gameOverMenuText[0].setStyle(sf::Text::Bold);
     gameOverMenuText[0].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 200.0f, this->stateMachine->window.getSize().y * 0.5f - 50.0f));
 
-    gameOverMenuText[1].setFont(menuFont);
+    gameOverMenuText[1].setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     gameOverMenuText[1].setString("Press Space to return");
     gameOverMenuText[1].setCharacterSize(TMConfig::gameOverMenuFontSize - 20);
     gameOverMenuText[1].setFillColor(TMConfig::gameOverMenuColor);
     gameOverMenuText[1].setStyle(sf::Text::Bold);
     gameOverMenuText[1].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 250.0f, this->stateMachine->window.getSize().y * 0.5f + 50.0f));
+
+    gameOverMusic.setLoop(false);
+    gameOverMusic.setVolume(10);
+    gameOverMusic.play();
 }
 
 void GameOverState::draw(const float dt)
@@ -58,10 +57,6 @@ void GameOverState::update(const float dt)
     {
         gameOverStarted = true;
         clock.restart();
-        gameOverMusic.stop();
-        gameOverMusic.setVolume(10);
-        gameOverMusic.setLoop(false);
-        gameOverMusic.play();
     }
 
     if (clock.getElapsedTime().asSeconds() > 0.2f)

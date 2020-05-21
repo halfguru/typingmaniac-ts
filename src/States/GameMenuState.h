@@ -26,7 +26,6 @@ private:
     void loadGame();
 
     sf::View menuView;
-    sf::Font menuFont;
     std::vector<sf::Text> menuText;
     sf::Clock clock;
     sf::Sound sound;

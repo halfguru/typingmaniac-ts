@@ -15,35 +15,30 @@ GameMenuState::GameMenuState(StateMachine *stateMachine)
     pos *= 0.5f;
     menuView.setCenter(pos);
 
-    if (!menuFont.loadFromFile(TMConfig::fontPath.string()))
-    {
-        LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Can't load arial.ttf");
-    }
-
     if (!gameMenuMusic.openFromFile(TMAssets::menuMusicPath.string()))
     {
         LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Can't load " << TMAssets::menuMusicPath);
     }
 
     menuText.resize(3);
-    menuText[0].setFont(menuFont);
+    menuText[0].setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     menuText[0].setString("Start Game");
     menuText[0].setCharacterSize(TMConfig::menuFontSize);
     menuText[0].setFillColor(TMConfig::gameMenuFontColor);
     menuText[0].setStyle(sf::Text::Bold);
     menuText[0].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 100.0f, this->stateMachine->window.getSize().y * 0.5f));
-    menuText[1].setFont(menuFont);
+    menuText[1].setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     menuText[1].setString("Quit");
     menuText[1].setCharacterSize(TMConfig::menuFontSize);
     menuText[1].setFillColor(TMConfig::gameMenuFontColor);
     menuText[1].setStyle(sf::Text::Bold);
     menuText[1].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 100.0f, this->stateMachine->window.getSize().y * 0.5f + 50.0f));
-    menuText[2].setFont(menuFont);
+    menuText[2].setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     menuText[2].setString(">");
     menuText[2].setCharacterSize(TMConfig::menuFontSize);
     menuText[2].setFillColor(TMConfig::gameMenuFontColor);
     menuText[2].setStyle(sf::Text::Bold);
-    menuText[2].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 120.0f, this->stateMachine->window.getSize().y * 0.5f + 50.0f));
+    menuText[2].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 120.0f, this->stateMachine->window.getSize().y * 0.5f));
 
     gameMenuMusic.setVolume(10);
     gameMenuMusic.setLoop(true);
@@ -119,12 +114,12 @@ void GameMenuState::handleInput()
             {
                 if (event.key.code == sf::Keyboard::Down)
                 {
-                    menuSelectionId = (menuSelectionId + 1) % menuText.size();
+                    menuSelectionId = (menuSelectionId + 1) % (menuText.size() - 1);
                 }
 
                 else if (event.key.code == sf::Keyboard::Up)
                 {
-                    menuSelectionId = (menuSelectionId - 1) % menuText.size();
+                    menuSelectionId = (menuSelectionId - 1) % (menuText.size() - 1);
                 }
 
                 else if(event.key.code == sf::Keyboard::Enter)

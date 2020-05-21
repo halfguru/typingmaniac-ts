@@ -24,7 +24,6 @@ private:
     std::vector<sf::Color> gameOverColorStates = {TMConfig::gameOverMenuColor, TMConfig::gameWordFontColor};
     sf::Clock clock;
     sf::View menuView;
-    sf::Font menuFont;
     sf::Sound sound;
     sf::Music gameOverMusic;
     std::vector<sf::Text> gameOverMenuText;

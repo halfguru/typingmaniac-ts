@@ -13,30 +13,20 @@ PauseMenuState::PauseMenuState(StateMachine *stateMachine)
     pos *= 0.5f;
     menuView.setCenter(pos);
 
-    if (!menuFont.loadFromFile(TMConfig::fontPath.string()))
-    {
-        LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Can't load " << TMConfig::fontPath);
-    }
-
-    if (!pauseMenuMusic.openFromFile(TMAssets::menuPauseSoundPath.string()))
-    {
-        LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Can't load " << TMAssets::menuPauseSoundPath);
-    }
-
     pauseMenuText.resize(2);
-    pauseMenuText[0].setFont(menuFont);
+    pauseMenuText[0].setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     pauseMenuText[0].setString("PAUSE");
     pauseMenuText[0].setCharacterSize(TMConfig::gameOverMenuFontSize);
     pauseMenuText[0].setFillColor(TMConfig::gameOverMenuColor);
     pauseMenuText[0].setStyle(sf::Text::Bold);
-    pauseMenuText[0].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 150.0f, this->stateMachine->window.getSize().y * 0.5f));
+    pauseMenuText[0].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 125.0f, this->stateMachine->window.getSize().y * 0.5f - 50.0f));
 
-    pauseMenuText[1].setFont(menuFont);
+    pauseMenuText[1].setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     pauseMenuText[1].setString("Press Space to return");
     pauseMenuText[1].setCharacterSize(TMConfig::gameOverMenuFontSize - 20);
     pauseMenuText[1].setFillColor(TMConfig::gameOverMenuColor);
     pauseMenuText[1].setStyle(sf::Text::Bold);
-    pauseMenuText[1].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 250.0f, this->stateMachine->window.getSize().y * 0.5f + 100.0f));
+    pauseMenuText[1].setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 250.0f, this->stateMachine->window.getSize().y * 0.5f + 50.0f));
 }
 
 void PauseMenuState::draw(const float dt)
@@ -53,11 +43,6 @@ void PauseMenuState::draw(const float dt)
 
 void PauseMenuState::update(const float dt)
 {
-    if (pauseMenuMusic.getStatus() != sf::SoundSource::Status::Playing)
-    {
-        pauseMenuMusic.play();
-    }
-
     if (clock.getElapsedTime().asSeconds() > 0.2f)
     {
         clock.restart();
@@ -110,6 +95,5 @@ void PauseMenuState::handleInput()
 void PauseMenuState::goBackToInGame()
 {
     LOG4CPLUS_INFO(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Go back to ingame");
-    pauseMenuMusic.stop();
     this->stateMachine->popState();
 }

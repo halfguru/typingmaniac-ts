@@ -8,6 +8,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include "../GameConfig.h"
+#include "CourseClearedState.h"
 #include "GameState.h"
 #include "GameOverState.h"
 #include "PauseMenuState.h"
@@ -23,43 +24,53 @@ GameState::GameState(StateMachine* stateMachine)
     pos *= 0.5f;
     menuView.setCenter(pos);
 
-    if (!gameFont.loadFromFile(TMConfig::fontPath.string()))
-    {
-        LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Can't load " << TMConfig::fontPath);
-    }
-
     if (!inGameMusic.openFromFile(TMAssets::inGameMusicPath.string()))
     {
         LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Can't load " << TMAssets::inGameMusicPath);
     }
 
-    gameText.setFont(gameFont);
+    gameText.setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     gameText.setString("Typing Maniac Game");
     gameText.setCharacterSize(TMConfig::wordFontSize);
     gameText.setFillColor(sf::Color::Black);
     gameText.setStyle(sf::Text::Bold);
     gameText.setPosition(sf::Vector2f(this->stateMachine->window.getSize().x * 0.5f - 100.0f, this->stateMachine->window.getSize().y - 50.0f));
 
-    scoreText.setFont(gameFont);
+    scoreText.setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     scoreText.setString(gameStatistics.scoreText + std::to_string(gameStatistics.score));
     scoreText.setCharacterSize(TMConfig::wordFontSize);
     scoreText.setFillColor(sf::Color::Black);
     scoreText.setStyle(sf::Text::Bold);
     scoreText.setPosition(sf::Vector2f(100.0f, this->stateMachine->window.getSize().y - 50.0f));
 
-    livesText.setFont(gameFont);
+    livesText.setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     livesText.setString(gameStatistics.livesText + std::to_string(gameStatistics.lives));
     livesText.setCharacterSize(TMConfig::wordFontSize);
     livesText.setFillColor(sf::Color::Black);
     livesText.setStyle(sf::Text::Bold);
     livesText.setPosition(sf::Vector2f(1100.0f, this->stateMachine->window.getSize().y - 50.0f));
 
-    rectangleLimit.setPosition(sf::Vector2f(0, this->stateMachine->window.getSize().y - 75.0f));
-    rectangleLimit.setSize(sf::Vector2f(this->stateMachine->window.getSize().x, 10));
-    rectangleLimit.setFillColor(sf::Color(150, 50, 150, 150));
+    progressionText.setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
+    progressionText.setString(std::to_string(int(gameStatistics.percentageProgression)) + gameStatistics.percentageProgressionText);
+    progressionText.setCharacterSize(TMConfig::wordFontSize);
+    progressionText.setFillColor(sf::Color::Black);
+    progressionText.setStyle(sf::Text::Bold);
+    progressionText.setPosition(sf::Vector2f(35.0f, this->stateMachine->window.getSize().y - 140.0f));
+
+    limitRect.setPosition(sf::Vector2f(0, this->stateMachine->window.getSize().y - 75.0f));
+    limitRect.setSize(sf::Vector2f(this->stateMachine->window.getSize().x, 10));
+    limitRect.setFillColor(sf::Color(150, 50, 150, 150));
+
+    staticProgressionRect = thor::Shapes::roundedRect(sf::Vector2f(50.0f, 720.0f/2), 5.0f, sf::Color(sf::Color::Red));
+    staticProgressionRect.setPosition(sf::Vector2f(75.0f, this->stateMachine->window.getSize().y - 150.0f));
+    staticProgressionRect.rotate(180.0f);
+
+    oldProgressionRectSize = progressionRectSize = sf::Vector2f(50.0f, 0.0f);
+    progressionRect = thor::Shapes::roundedRect(progressionRectSize, 0.0f, sf::Color(sf::Color::Green));
+    progressionRect.setPosition(sf::Vector2f(75.0f, this->stateMachine->window.getSize().y - 150.0f));
+    progressionRect.rotate(180.0f);
 
     loadDictionary();
-    generateLevelWords();
 }
 
 void GameState::draw(const float dt)
@@ -70,7 +81,10 @@ void GameState::draw(const float dt)
     this->stateMachine->window.draw(gameText);
     this->stateMachine->window.draw(scoreText);
     this->stateMachine->window.draw(livesText);
-    this->stateMachine->window.draw(rectangleLimit);
+    this->stateMachine->window.draw(progressionText);
+    this->stateMachine->window.draw(limitRect);
+    this->stateMachine->window.draw(staticProgressionRect);
+    this->stateMachine->window.draw(progressionRect);
     for (WordState& ele: drawnWords)
     {
         this->stateMachine->window.draw(ele.word);
@@ -88,16 +102,8 @@ void GameState::update(const float dt)
         inGameMusic.setLoop(true);
         inGameMusic.play();
 
-        if (!gameWords.empty())
-        {
-            drawnWords.push_back(gameWords.top());
-            gameWords.pop();
-            gameStarted = true;
-        }
-        else
-        {
-            LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Game started but no words in stack?");
-        }
+        drawnWords.push_back(spawnWord(gameConfig.wordLen));
+        gameStarted = true;
     }
 
     if (gamePaused)
@@ -125,23 +131,20 @@ void GameState::update(const float dt)
         gameText.setFillColor(sf::Color(statsColorValue, 150, 100));
         scoreText.setFillColor(sf::Color(statsColorValue, 150, 100));
         livesText.setFillColor(sf::Color(statsColorValue, 150, 100));
+        progressionRect.setFillColor(sf::Color(0, 255, statsColorValue));
+        staticProgressionRect.setFillColor(sf::Color(255, 0, statsColorValue));
+        progressionText.setFillColor(sf::Color(0, 0 , statsColorValue));
     }
 
-    if (gameStopWatch.getElapsedTime().asSeconds() > gameConfig.wordTimeInterval)
+    if (gameStopWatch.getElapsedTime().asSeconds() > gameConfig.wordTimeInterval && gameStatistics.percentageProgression < 1.0f)
     {
         gameStopWatch.restart();
-        if (!gameWords.empty())
-        {
-            drawnWords.push_back(gameWords.top());
-            gameWords.pop();
-        }
-        else
-        {
-            if (drawnWords.empty())
-            {
-                goToGameOverMenu();
-            }
-        }
+        drawnWords.push_back(spawnWord(gameConfig.wordLen));
+    }
+
+    if (gameStatistics.percentageProgression >= 1.0f && !wordCompleted)
+    {
+        goToCourseCleared();
     }
 
     if (gameStatistics.lives <= -1)
@@ -149,9 +152,27 @@ void GameState::update(const float dt)
         goToGameOverMenu();
     }
 
+    // Progression bar increase animation
+    if (wordCompleted)
+    {
+        if (progressionRectSize.y >= oldProgressionRectSize.y + (720.0f / 2.0f / WORDS_PER_LEVEL))
+        {
+            wordCompleted = false;
+            progressionRectSize.y = oldProgressionRectSize.y = oldProgressionRectSize.y + (720.0f / 2.0f / WORDS_PER_LEVEL);
+        }
+        else
+        {
+            progressionRectSize.y = progressionRectSize.y + 1.0f;
+            progressionRectSize = sf::Vector2f(50.0f, progressionRectSize.y);
+            progressionRect = thor::Shapes::roundedRect(progressionRectSize, 5.0f, sf::Color(sf::Color::Green));
+            progressionRect.setPosition(sf::Vector2f(75.0f, this->stateMachine->window.getSize().y - 150.0f));
+            progressionRect.rotate(180.0f);
+        }
+    }
+
     for (int i = 0; i < drawnWords.size(); ++i)
     {
-        if (drawnWords[i].wordYPos >= rectangleLimit.getPosition().y - 26.0f)
+        if (drawnWords[i].wordYPos >= limitRect.getPosition().y - 26.0f)
         {
             gameStatistics.lives--;
             livesText.setString(gameStatistics.livesText + std::to_string(gameStatistics.lives));
@@ -203,7 +224,7 @@ void GameState::handleInput()
                 // Accelerate speed
                 else if (event.key.code == SPACE_KEY)
                 {
-                    gameConfig.incrementSpeed = 3;
+                    gameConfig.incrementSpeed = 3.0f;
                     break;
                 }
 
@@ -307,6 +328,9 @@ void GameState::handleInput()
                                             scoreText.setString(gameStatistics.scoreText + std::to_string(gameStatistics.score));
                                             sound.setBuffer(this->stateMachine->sounds[TMAssets::SoundType::CorrectWord]);
                                             sound.play();
+                                            wordCompleted = true;
+                                            gameStatistics.percentageProgression = gameStatistics.percentageProgression + 1.0f / WORDS_PER_LEVEL;
+                                            progressionText.setString(std::to_string(int(gameStatistics.percentageProgression * 100)) + gameStatistics.percentageProgressionText);
                                         }
 
                                         else
@@ -360,7 +384,7 @@ void GameState::handleInput()
             {
                 if (event.key.code == sf::Keyboard::Space)
                 {
-                    gameConfig.incrementSpeed = 1;
+                    gameConfig.incrementSpeed = 1.0f;
                     break;
                 }
             }
@@ -434,29 +458,19 @@ void GameState::loadDictionary()
     file.close();
 }
 
-void GameState::generateLevelWords()
-{
-    LOG4CPLUS_DEBUG(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Generating " << WORDS_PER_LEVEL << " words for this level");
-
-    for (int i = 0; i < WORDS_PER_LEVEL; ++i)
-    {
-        gameWords.push(spawnWord());
-    }
-}
-
-WordState GameState::spawnWord()
+WordState GameState::spawnWord(const unsigned short wordLen)
 {
     WordState gameWord;
-    gameWord.wordString = dictionaryByLen[gameConfig.wordLen][rand() % dictionaryByLen[gameConfig.wordLen].size()];
+    gameWord.wordString = dictionaryByLen[wordLen][rand() % dictionaryByLen[wordLen].size()];
     for (int i = 0; i < gameWord.wordString.length(); ++i) {
         gameWord.wordChars.insert(std::pair<unsigned char, sf::Color>(i, TMConfig::gameWordFontColor));
     }
 
     LOG4CPLUS_TRACE(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "word spawned: " << gameWord.wordString.c_str());
 
-    gameWord.wordYPos = 0;
+    gameWord.wordYPos = 0.0f;
     gameWord.wordXpos = rand() % (this->stateMachine->background.getTexture()->getSize().x - 230) + 50;
-    gameWord.word.setFont(gameFont);
+    gameWord.word.setFont(this->stateMachine->fonts[TMAssets::FontType::Minecraft]);
     gameWord.word.clear();
     for (int i = 0; i < gameWord.wordString.size(); ++i) {
         gameWord.word << gameWord.wordChars[i] << gameWord.wordString[i] << " ";
@@ -483,4 +497,26 @@ void GameState::goToPauseMenu()
     sound.setBuffer(this->stateMachine->sounds[TMAssets::SoundType::MenuPause]);
     sound.play();
     this->stateMachine->pushState(new PauseMenuState(this->stateMachine));
+}
+
+void GameState::goToCourseCleared()
+{
+    LOG4CPLUS_INFO(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), "Go to course cleared");
+    updateNextLevel();
+    inGameMusic.stop();
+    this->stateMachine->pushState(new CourseClearedState(this->stateMachine));
+}
+
+void GameState::updateNextLevel()
+{
+    gameStarted = false;
+    gameConfig.incrementSpeed = gameConfig.incrementSpeed + 0.5f;
+    gameStatistics.percentageProgression = 0.0f;
+    gameStatistics.lives = 3;
+    wordCompleted = false;
+    oldProgressionRectSize = progressionRectSize = sf::Vector2f(50.0f, 0.0f);
+    progressionRect = thor::Shapes::roundedRect(progressionRectSize, 0.0f, sf::Color(sf::Color::Green));
+    progressionRect.setPosition(sf::Vector2f(75.0f, this->stateMachine->window.getSize().y - 150.0f));
+    progressionRect.rotate(180.0f);
+    progressionText.setString(std::to_string(int(gameStatistics.percentageProgression)) + gameStatistics.percentageProgressionText);
 }

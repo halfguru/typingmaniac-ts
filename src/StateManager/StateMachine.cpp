@@ -11,6 +11,7 @@ StateMachine::StateMachine(struct TMScreenConfig tmScreenConfig)
 {
     this->window.create(sf::VideoMode(tmScreenConfig.width, tmScreenConfig.height), tmScreenConfig.name);
     this->window.setFramerateLimit(tmScreenConfig.frameRate);
+    this->loadFonts();
     this->loadTextures();
     this->loadSounds();
     this->background.setTexture(textures[TMAssets::TextureType::Background]);
@@ -101,4 +102,15 @@ void StateMachine::loadTextures()
     }
 }
 
+void StateMachine::loadFonts()
+{
+    try
+    {
+        fonts.acquire(TMAssets::FontType::Minecraft, thor::Resources::fromFile<sf::Font>(TMAssets::minecraftFontPath.string()));
+    }
+    catch (thor::ResourceLoadingException& e)
+    {
+        LOG4CPLUS_ERROR(log4cplus::Logger::getInstance(LOG4CPLUS_TEXT("TypingManiac")), e.what());
+    }
+}
 

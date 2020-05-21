@@ -21,7 +21,7 @@ int main()
         .height = TMConfig::SCREEN_HEIGHT,
         .frameRate = TMConfig::FRAME_RATE
     };
-    std::unique_ptr<StateMachine> stateMachine =  std::make_unique<StateMachine>(tmScreenConfig);
+    std::unique_ptr<StateMachine> stateMachine = std::make_unique<StateMachine>(tmScreenConfig);
     std::unique_ptr<GameMenuState> gameMenu = std::make_unique<GameMenuState>(stateMachine.get());
     stateMachine->pushState(gameMenu.get());
     stateMachine->gameLoop();

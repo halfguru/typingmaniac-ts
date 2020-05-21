@@ -38,12 +38,14 @@ public:
     std::stack<State*> states;
     sf::RenderWindow window;
     sf::Sprite background;
+    thor::ResourceHolder<sf::Font, TMAssets::FontType> fonts;
     thor::ResourceHolder<sf::Texture, TMAssets::TextureType> textures;
     thor::ResourceHolder<sf::SoundBuffer, TMAssets::SoundType> sounds;
 
 private:
     void loadTextures();
     void loadSounds();
+    void loadFonts();
 };
 
 #endif /* TYPINGMANIAC_STATEMACHINE_H */
