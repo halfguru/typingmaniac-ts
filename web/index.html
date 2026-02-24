@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Typing Maniac</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1e1e2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>
+    <script src="wasm_exec.js"></script>
+    <script>
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch('game.wasm'), go.importObject)
+            .then(result => go.run(result.instance))
+            .catch(err => console.error('Failed to load WASM:', err));
+    </script>
+</body>
+</html>
