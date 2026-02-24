@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"log"
 	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,9 @@ const (
 	FontSize     = 28
 	FallSpeed    = 1.5
 	SpawnDelay   = 90
+	DangerZoneY  = ScreenHeight - 80
+	MaxLives     = 3
+	PointPenalty = 50
 )
 
 var wordList = []string{
@@ -44,9 +48,11 @@ type Game struct {
 	words    []Word
 	input    string
 	score    int
+	lives    int
 	spawnCnt int
 	rand     *rand.Rand
 	fontFace *text.GoTextFace
+	gameOver bool
 }
 
 func NewGame() *Game {
@@ -65,6 +71,7 @@ func NewGame() *Game {
 	return &Game{
 		rand:     r,
 		fontFace: fontFace,
+		lives:    MaxLives,
 	}
 }
 
@@ -75,6 +82,13 @@ func (g *Game) spawnWord() {
 }
 
 func (g *Game) Update() error {
+	if g.gameOver {
+		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			g.reset()
+		}
+		return nil
+	}
+
 	g.spawnCnt++
 	if g.spawnCnt >= SpawnDelay {
 		g.spawnCnt = 0
@@ -87,57 +101,89 @@ func (g *Game) Update() error {
 
 	var active []Word
 	for _, w := range g.words {
+		if w.y >= DangerZoneY && w.y < DangerZoneY+FallSpeed+1 {
+			g.lives--
+			g.score -= PointPenalty
+			if g.score < 0 {
+				g.score = 0
+			}
+			if g.lives <= 0 {
+				g.gameOver = true
+			}
+			continue
+		}
 		if w.y < ScreenHeight+50 {
 			active = append(active, w)
 		}
 	}
 	g.words = active
 
-	letters := "abcdefghijklmnopqrstuvwxyz"
-	for _, r := range letters {
-		if inpututil.IsKeyJustPressed(ebiten.Key(r)) {
+	runes := ebiten.AppendInputChars(nil)
+	for _, r := range runes {
+		if r >= 'a' && r <= 'z' {
 			g.input += string(r)
+		} else if r >= 'A' && r <= 'Z' {
+			g.input += strings.ToLower(string(r))
 		}
 	}
+
 	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(g.input) > 0 {
 		g.input = g.input[:len(g.input)-1]
 	}
 
 	inputLower := strings.ToLower(g.input)
-	for i, w := range g.words {
-		if strings.ToLower(w.text) == inputLower {
-			g.score += len(w.text) * 10
-			g.words = append(g.words[:i], g.words[i+1:]...)
+	if inputLower != "" {
+		targetIdx := g.findTargetWord(inputLower)
+		if targetIdx >= 0 && strings.ToLower(g.words[targetIdx].text) == inputLower {
+			g.score += len(g.words[targetIdx].text) * 10
+			g.words = append(g.words[:targetIdx], g.words[targetIdx+1:]...)
 			g.input = ""
-			break
-		}
-	}
-
-	for _, w := range g.words {
-		if strings.HasPrefix(strings.ToLower(w.text), inputLower) && inputLower != "" {
-			break
 		}
 	}
 
 	return nil
 }
 
+func (g *Game) findTargetWord(inputLower string) int {
+	targetIdx := -1
+	var targetY float64 = -1
+
+	for i, w := range g.words {
+		if strings.HasPrefix(strings.ToLower(w.text), inputLower) {
+			if w.y > targetY {
+				targetY = w.y
+				targetIdx = i
+			}
+		}
+	}
+	return targetIdx
+}
+
+func (g *Game) reset() {
+	g.words = nil
+	g.input = ""
+	g.score = 0
+	g.lives = MaxLives
+	g.spawnCnt = 0
+	g.gameOver = false
+}
+
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{20, 20, 40, 255})
 
-	for _, w := range g.words {
-		wordLower := strings.ToLower(w.text)
-		inputLower := strings.ToLower(g.input)
+	dangerZoneOp := &text.DrawOptions{}
+	dangerZoneOp.GeoM.Translate(20, DangerZoneY)
+	dangerZoneOp.ColorScale.ScaleWithColor(color.RGBA{80, 30, 30, 100})
+	text.Draw(screen, strings.Repeat("-", 100), g.fontFace, dangerZoneOp)
 
-		col := color.RGBA{255, 255, 255, 255}
-		if inputLower != "" && strings.HasPrefix(wordLower, inputLower) {
-			col = color.RGBA{100, 255, 100, 255}
-		}
+	targetIdx := -1
+	if g.input != "" {
+		targetIdx = g.findTargetWord(strings.ToLower(g.input))
+	}
 
-		op := &text.DrawOptions{}
-		op.GeoM.Translate(w.x, w.y)
-		op.ColorScale.ScaleWithColor(col)
-		text.Draw(screen, w.text, g.fontFace, op)
+	for i, w := range g.words {
+		isTarget := (i == targetIdx)
+		g.drawWord(screen, w, isTarget)
 	}
 
 	inputOp := &text.DrawOptions{}
@@ -148,31 +194,59 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	scoreOp := &text.DrawOptions{}
 	scoreOp.GeoM.Translate(ScreenWidth-150, 40)
 	scoreOp.ColorScale.ScaleWithColor(color.RGBA{255, 255, 255, 255})
-	text.Draw(screen, "Score: "+intToStr(g.score), g.fontFace, scoreOp)
+	text.Draw(screen, "Score: "+strconv.Itoa(g.score), g.fontFace, scoreOp)
+
+	livesOp := &text.DrawOptions{}
+	livesOp.GeoM.Translate(20, 40)
+	livesOp.ColorScale.ScaleWithColor(color.RGBA{255, 100, 100, 255})
+	text.Draw(screen, "Lives: "+strconv.Itoa(g.lives), g.fontFace, livesOp)
+
+	if g.gameOver {
+		overOp := &text.DrawOptions{}
+		overOp.GeoM.Translate(ScreenWidth/2-100, ScreenHeight/2-20)
+		overOp.ColorScale.ScaleWithColor(color.RGBA{255, 50, 50, 255})
+		text.Draw(screen, "GAME OVER - Press SPACE to restart", g.fontFace, overOp)
+	}
+}
+
+func (g *Game) drawWord(screen *ebiten.Image, w Word, isTarget bool) {
+	inputLower := strings.ToLower(g.input)
+	wordLower := strings.ToLower(w.text)
+
+	matchedLen := 0
+	if inputLower != "" && strings.HasPrefix(wordLower, inputLower) {
+		matchedLen = len(inputLower)
+	}
+
+	baseColor := color.RGBA{255, 255, 255, 255}
+	if isTarget && matchedLen > 0 {
+		baseColor = color.RGBA{255, 200, 100, 255}
+	}
+
+	x := w.x
+	for i, ch := range w.text {
+		op := &text.DrawOptions{}
+		op.GeoM.Translate(x, w.y)
+
+		if i < matchedLen {
+			if isTarget {
+				op.ColorScale.ScaleWithColor(color.RGBA{50, 255, 50, 255})
+			} else {
+				op.ColorScale.ScaleWithColor(color.RGBA{100, 255, 100, 255})
+			}
+		} else {
+			op.ColorScale.ScaleWithColor(baseColor)
+		}
+
+		text.Draw(screen, string(ch), g.fontFace, op)
+
+		advance := text.Advance(string(ch), g.fontFace)
+		x += advance
+	}
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return ScreenWidth, ScreenHeight
-}
-
-func intToStr(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var neg bool
-	if n < 0 {
-		neg = true
-		n = -n
-	}
-	var s string
-	for n > 0 {
-		s = string(rune('0'+n%10)) + s
-		n /= 10
-	}
-	if neg {
-		s = "-" + s
-	}
-	return s
 }
 
 func main() {
