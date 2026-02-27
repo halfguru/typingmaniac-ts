@@ -131,70 +131,78 @@ export class GameScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
 
-    this.createFlameParticles(zoneY);
+    this.createDangerLineEffects(zoneY);
   }
 
-  createFlameParticles(zoneY: number) {
-    const flameCount = 25;
+  createDangerLineEffects(zoneY: number) {
+    const glowLine = this.add.graphics();
+    glowLine.setDepth(6);
+
+    this.tweens.add({
+      targets: { intensity: 0 },
+      intensity: 1,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+      onUpdate: (tween) => {
+        const target = tween.targets[0] as { intensity: number };
+        const intensity = target.intensity;
+        glowLine.clear();
+        
+        for (let i = 0; i < 8; i++) {
+          const alpha = 0.15 * intensity * (1 - i * 0.1);
+          const width = 3 + i * 2;
+          glowLine.lineStyle(width, 0xff4444, alpha);
+          glowLine.lineBetween(0, zoneY - i * 2, GAME_AREA_WIDTH, zoneY - i * 2);
+          glowLine.lineBetween(0, zoneY + i * 2, GAME_AREA_WIDTH, zoneY + i * 2);
+        }
+      },
+    });
+
+    this.createEmberParticles(zoneY);
+  }
+
+  createEmberParticles(zoneY: number) {
+    const emberCount = 15;
     
-    for (let i = 0; i < flameCount; i++) {
-      const x = (GAME_AREA_WIDTH / flameCount) * i + Math.random() * (GAME_AREA_WIDTH / flameCount);
-      this.createFlame(x, zoneY);
+    for (let i = 0; i < emberCount; i++) {
+      this.createEmber(zoneY, i * 150);
     }
   }
 
-  createFlame(baseX: number, baseY: number) {
-    const flame = this.add.graphics();
-    flame.setDepth(8);
-
-    const animData = { progress: 0 };
+  createEmber(baseY: number, delay: number) {
+    const baseX = Math.random() * GAME_AREA_WIDTH;
+    
+    const ember = this.add.circle(baseX, baseY, 2 + Math.random() * 3, 0xff6644, 0.8);
+    ember.setDepth(7);
+    ember.setAlpha(0);
 
     const animate = () => {
-      animData.progress = 0;
-      const targetX = baseX + (Math.random() - 0.5) * 10;
-      const duration = 200 + Math.random() * 300;
-      const scale = 0.5 + Math.random() * 0.5;
+      const startX = Math.random() * GAME_AREA_WIDTH;
+      const startY = baseY + Math.random() * 20;
+      const size = 1 + Math.random() * 3;
+      const color = Math.random() > 0.5 ? 0xff6644 : (Math.random() > 0.5 ? 0xffaa44 : 0xff4444);
+      
+      ember.setPosition(startX, startY);
+      ember.setRadius(size);
+      ember.setFillStyle(color);
+      ember.setAlpha(0);
 
       this.tweens.add({
-        targets: animData,
-        progress: 1,
-        duration: duration,
-        onUpdate: () => {
-          const p = animData.progress;
-          const currentScale = scale * (1 - p * 0.5);
-          const currentAlpha = 1 - p * 0.7;
-          const offsetY = p * 20;
-          const offsetX = (targetX - baseX) * p;
-          
-          flame.clear();
-          const height = 20 + currentScale * 15;
-          const width = 8 + currentScale * 4;
-
-          for (let i = 0; i < 5; i++) {
-            const layerAlpha = currentAlpha * (1 - i * 0.15);
-            const layerHeight = height * (1 - i * 0.1);
-            const layerWidth = width * (1 - i * 0.15);
-            
-            const r = 255;
-            const g = Math.floor(100 + i * 30);
-            const b = Math.floor(30 + i * 20);
-            const color = (r << 16) | (g << 8) | b;
-            
-            flame.fillStyle(color, layerAlpha);
-            flame.fillTriangle(
-              baseX + offsetX, baseY - layerHeight - offsetY,
-              baseX + offsetX - layerWidth / 2, baseY - offsetY,
-              baseX + offsetX + layerWidth / 2, baseY - offsetY
-            );
-          }
-        },
+        targets: ember,
+        y: startY - 60 - Math.random() * 40,
+        x: startX + (Math.random() - 0.5) * 40,
+        alpha: { from: 0.9, to: 0 },
+        duration: 1500 + Math.random() * 1000,
+        ease: 'Quad.easeOut',
         onComplete: () => {
-          animate();
+          this.time.delayedCall(200 + Math.random() * 500, animate);
         },
       });
     };
 
-    animate();
+    this.time.delayedCall(delay, animate);
   }
 
   drawInputArea() {
