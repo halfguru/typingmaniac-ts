@@ -21,15 +21,15 @@ export const COLORS = {
   POWER_SLOW: 0xffb74d,
 } as const;
 
-export const GAME_WIDTH = 1280;
-export const GAME_HEIGHT = 720;
-export const SIDEBAR_WIDTH = 180;
+export const GAME_WIDTH = 1920;
+export const GAME_HEIGHT = 1080;
+export const SIDEBAR_WIDTH = 270;
 export const GAME_AREA_WIDTH = GAME_WIDTH - SIDEBAR_WIDTH;
-export const DANGER_ZONE_Y = GAME_HEIGHT - 100;
+export const DANGER_ZONE_Y = GAME_HEIGHT - 150;
 
-export const FONT_SIZE = 28;
-export const FONT_SMALL = 22;
-export const FONT_LARGE = 36;
+export const FONT_SIZE = 42;
+export const FONT_SMALL = 33;
+export const FONT_LARGE = 54;
 export const FONT_FAMILY = 'Fredoka, Arial, sans-serif';
 
 export const BASE_FALL_SPEED = 1.5;
