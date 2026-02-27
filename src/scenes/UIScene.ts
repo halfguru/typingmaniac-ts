@@ -592,7 +592,7 @@ export class UIScene extends Phaser.Scene {
     panel.strokeRoundedRect(panelX + 8, panelY + 8, panelW - 16, panelH - 16, 20);
     this.gameOverOverlay.add(panel);
 
-    const skull = this.add.text(GAME_WIDTH / 2, panelY + 60, '💀', {
+    const skull = this.add.text(GAME_WIDTH / 2, panelY + 85, '💀', {
       fontSize: '70px',
     });
     skull.setOrigin(0.5, 0.5);
@@ -600,7 +600,7 @@ export class UIScene extends Phaser.Scene {
     skull.setScale(0);
     this.gameOverOverlay.add(skull);
 
-    const gameOverText = this.add.text(GAME_WIDTH / 2, panelY + 140, 'GAME OVER', {
+    const gameOverText = this.add.text(GAME_WIDTH / 2, panelY + 165, 'GAME OVER', {
       fontFamily: FONT_FAMILY,
       fontSize: '56px',
       color: '#ff4444',
@@ -861,7 +861,7 @@ export class UIScene extends Phaser.Scene {
     const stats: { label: string; value: number; suffix: string; y: number }[] = [
       { label: 'Accuracy', value: accuracy, suffix: '%', y: -110 },
       { label: 'Bonus', value: accBonus, suffix: '', y: -50 },
-      { label: errorFree ? 'Error Free' : 'Errors', value: -1, suffix: errorFree ? ':)' : ':(', y: 10 },
+      { label: errorFree ? 'Error Free' : 'Errors', value: -1, suffix: errorFree ? '✅' : '❌', y: 10 },
       { label: 'Bonus', value: errBonus, suffix: '', y: 70 },
     ];
 

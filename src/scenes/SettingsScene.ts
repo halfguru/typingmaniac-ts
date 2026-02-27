@@ -16,7 +16,7 @@ export class SettingsScene extends Phaser.Scene {
     const centerX = GAME_WIDTH / 2;
     const centerY = GAME_HEIGHT / 2;
     const panelW = 480;
-    const panelH = 420;
+    const panelH = 460;
 
     const panel = this.add.graphics();
     panel.fillStyle(0x050a12, 1);
@@ -40,7 +40,7 @@ export class SettingsScene extends Phaser.Scene {
     });
 
   
-    const title = this.add.text(centerX, centerY - 170, 'SETTINGS', {
+    const title = this.add.text(centerX, centerY - 190, 'SETTINGS', {
       fontFamily: FONT_FAMILY,
       fontSize: '48px',
       color: '#4fc3f7',
@@ -51,13 +51,13 @@ export class SettingsScene extends Phaser.Scene {
   
     const settings = audioService.getSettings();
   
-    this.createSlider(centerX, centerY - 80, 'MASTER', settings.masterVolume, 'master');
-    this.createSlider(centerX, centerY - 10, 'SOUND EFFECTS', settings.sfxVolume, 'sfx');
+    this.createSlider(centerX, centerY - 90, 'MASTER', settings.masterVolume, 'master');
+    this.createSlider(centerX, centerY - 15, 'SOUND EFFECTS', settings.sfxVolume, 'sfx');
     this.createSlider(centerX, centerY + 60, 'MUSIC', settings.musicVolume, 'music');
   
-    this.createMuteButton(centerX, centerY + 130, settings.muted);
+    this.createMuteButton(centerX, centerY + 140, settings.muted);
    
-    this.createBackButton(centerX, centerY + 185);
+    this.createBackButton(centerX, centerY + 200);
   
     this.input.keyboard!.on('keydown-ESC', () => this.goBack());
     this.input.keyboard!.on('keydown-BACKSPACE', () => this.goBack());

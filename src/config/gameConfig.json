@@ -1,0 +1,43 @@
+{
+  "progression": {
+    "wordsPerLevel": [
+      { "minLevel": 1, "maxLevel": 2, "words": 8 },
+      { "minLevel": 3, "maxLevel": 4, "words": 10 },
+      { "minLevel": 5, "maxLevel": 6, "words": 12 },
+      { "minLevel": 7, "maxLevel": 999, "words": 14 }
+    ]
+  },
+  "scoring": {
+    "pointsPerLetter": 10,
+    "firePointsPerWord": 50
+  },
+  "combo": {
+    "levels": [
+      { "minWords": 9, "text": "GOOD", "multiplier": 1.2 },
+      { "minWords": 18, "text": "GREAT", "multiplier": 1.5 },
+      { "minWords": 27, "text": "PERFECT", "multiplier": 2.0 },
+      { "minWords": 36, "text": "FANTASTIC", "multiplier": 3.0 }
+    ]
+  },
+  "difficulty": {
+    "baseFallSpeed": 1.5,
+    "speedIncreasePerLevel": 0.15,
+    "spawnDelayBase": 90,
+    "spawnDelayDecreasePerLevel": 5,
+    "minSpawnDelay": 30,
+    "limitPctPerMissed": 10
+  },
+  "powers": {
+    "dropRateBase": 0.05,
+    "dropRateIncreasePerLevel": 0.02,
+    "dropRateMax": 0.25,
+    "iceDuration": 5000,
+    "slowDuration": 5000,
+    "slowFactor": 0.3
+  },
+  "wordGeneration": {
+    "baseWordLength": 4,
+    "wordLengthIncreasePerLevels": 3,
+    "maxWordLength": 10
+  }
+}
