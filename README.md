@@ -20,14 +20,14 @@ Words fall from the top of the screen. Type them letter-by-letter to destroy the
 
 ### Power-Ups
 
-Collect books to activate special powers:
+Collect power words to activate special abilities:
 
 | Power | Effect |
 |-------|--------|
-| 🔥 **Fire** | Burns all words on screen |
-| ❄️ **Ice** | Freezes words in place |
-| 🐢 **Slow** | Slows falling words |
-| 💨 **Wind** | Removes your typing errors |
+| 🔥 **Fire** | Burns all words on screen (+50 pts each) |
+| ❄️ **Ice** | Freezes all words for 5 seconds |
+| ⏱️ **Slow** | Slows falling speed for 5 seconds |
+| 💨 **Wind** | Resets the danger (LIMIT) bar to 0% |
 
 ---
 
@@ -57,9 +57,11 @@ Open http://localhost:3000 in your browser.
 ```
 .
 ├── src/
-│   ├── main.ts           # Entry point
-│   ├── scenes/           # Phaser scenes
-│   ├── config/           # Game config, colors, words
+│   ├── main.ts           # Entry point, scene registration
+│   ├── scenes/           # Phaser scenes (Menu, Game, UI, Countdown)
+│   ├── config/           # Game constants, colors
+│   ├── data/             # Word lists (JSON)
+│   ├── services/         # Game services (WordService)
 │   └── types/            # TypeScript types
 ├── index.html
 ├── package.json

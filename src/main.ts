@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from './config/constants';
+import { MenuScene } from './scenes/MenuScene';
+import { CountdownScene } from './scenes/CountdownScene';
 import { GameScene } from './scenes/GameScene';
 import { UIScene } from './scenes/UIScene';
 
@@ -9,12 +11,15 @@ const config: Phaser.Types.Core.GameConfig = {
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
   backgroundColor: 0x1a4a4a,
-  antialias: true,
+  roundPixels: true,
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [GameScene, UIScene],
+  scene: [MenuScene, CountdownScene, GameScene, UIScene],
 };
+
+// @ts-expect-error - resolution is valid but not in types
+config.resolution = window.devicePixelRatio || 1;
 
 new Phaser.Game(config);

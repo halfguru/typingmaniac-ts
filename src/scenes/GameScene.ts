@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
 import type { PowerType, GameState as GState } from '../types';
+import { wordService } from '../services/WordService';
 import {
   GAME_AREA_WIDTH,
+  GAME_WIDTH,
+  GAME_HEIGHT,
   DANGER_ZONE_Y,
   BASE_FALL_SPEED,
   SPAWN_DELAY_BASE,
@@ -19,7 +22,6 @@ import {
   FONT_SIZE,
   COLORS,
 } from '../config/constants';
-import { getWordPoolForLevel } from '../config/words';
 
 interface WordObject {
   text: Phaser.GameObjects.Text;
@@ -29,8 +31,9 @@ interface WordObject {
   speed: number;
   frozen: boolean;
   power: PowerType;
-  container?: Phaser.GameObjects.Rectangle;
+  container?: Phaser.GameObjects.Graphics;
   letters: Phaser.GameObjects.Text[];
+  frozenIndicator?: Phaser.GameObjects.Text;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -49,17 +52,61 @@ export class GameScene extends Phaser.Scene {
   powerTimer = 0;
   activePower: PowerType = 'none';
   inputText!: Phaser.GameObjects.Text;
+  combo = 0;
+  private slowOverlay?: Phaser.GameObjects.Graphics;
+  private iceOverlay?: Phaser.GameObjects.Graphics;
+
+  private readonly COMBO_LEVELS = [
+    { min: 1, text: 'GOOD', color: '#4CAF50', multiplier: 1.2 },
+    { min: 3, text: 'GREAT', color: '#2196F3', multiplier: 1.5 },
+    { min: 5, text: 'PERFECT', color: '#FF9800', multiplier: 2 },
+    { min: 8, text: 'FANTASTIC', color: '#E91E63', multiplier: 3 },
+  ];
 
   constructor() {
     super({ key: 'GameScene' });
   }
 
   create() {
+    this.drawBackground();
     this.drawDangerZone();
     this.drawInputArea();
     this.input.keyboard!.on('keydown', this.handleKeyDown, this);
     this.scene.launch('UIScene');
     this.events.emit('gameDataUpdate', this.getGameData());
+  }
+
+  drawBackground() {
+    const graphics = this.add.graphics();
+
+    const colorTop = Phaser.Display.Color.IntegerToColor(0x0d2b2b);
+    const colorBottom = Phaser.Display.Color.IntegerToColor(0x1a4a4a);
+
+    for (let y = 0; y < GAME_HEIGHT; y++) {
+      const ratio = y / GAME_HEIGHT;
+      const color = Phaser.Display.Color.Interpolate.ColorWithColor(colorTop, colorBottom, 100, ratio * 100);
+      const colorInt = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
+      graphics.fillStyle(colorInt, 1);
+      graphics.fillRect(0, y, GAME_WIDTH, 1);
+    }
+
+    for (let i = 0; i < 15; i++) {
+      const x = Math.random() * GAME_AREA_WIDTH;
+      const y = Math.random() * GAME_HEIGHT;
+      const size = 2 + Math.random() * 3;
+      const alpha = 0.1 + Math.random() * 0.2;
+
+      const star = this.add.circle(x, y, size, 0x4fc3f7, alpha);
+
+      this.tweens.add({
+        targets: star,
+        alpha: { from: alpha, to: alpha * 0.3 },
+        duration: 2000 + Math.random() * 3000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
   }
 
   getGameData() {
@@ -77,18 +124,36 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawDangerZone() {
-    this.add.rectangle(GAME_AREA_WIDTH / 2, DANGER_ZONE_Y + 2, GAME_AREA_WIDTH, 4, COLORS.DANGER);
+    const graphics = this.add.graphics();
+
+    for (let i = 3; i >= 0; i--) {
+      const alpha = 0.15 - i * 0.03;
+      graphics.fillStyle(0xC83C3C, alpha);
+      graphics.fillRect(0, DANGER_ZONE_Y - i * 2, GAME_WIDTH, 4 + i * 4);
+    }
+
+    const coreLine = this.add.rectangle(GAME_WIDTH / 2, DANGER_ZONE_Y + 2, GAME_WIDTH, 3, 0xff4444);
+    coreLine.setAlpha(0.9);
+
+    this.tweens.add({
+      targets: coreLine,
+      alpha: { from: 0.9, to: 0.5 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   drawInputArea() {
-    const containerW = 400;
-    const containerH = 40;
+    const containerW = 600;
+    const containerH = 60;
     const containerX = GAME_AREA_WIDTH / 2 - containerW / 2;
-    const containerY = 650;
+    const containerY = GAME_HEIGHT - 90;
 
     this.add.rectangle(containerX + containerW / 2, containerY + containerH / 2, containerW, containerH, COLORS.BG_PANEL);
 
-    this.inputText = this.add.text(GAME_AREA_WIDTH / 2, containerY + containerH / 2 + 8, '', {
+    this.inputText = this.add.text(GAME_AREA_WIDTH / 2, containerY + containerH / 2, '', {
       fontFamily: FONT_FAMILY,
       fontSize: `${FONT_SIZE}px`,
       color: '#4fc3f7',
@@ -105,9 +170,32 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.gameState === 'levelComplete') {
-      if (event.code === 'Enter') {
+      if (event.code === 'Enter' || event.code === 'Space') {
         this.continueAfterLevelComplete();
       }
+      return;
+    }
+
+    if (this.gameState !== 'playing') return;
+
+    if (event.key === '1' && this.powerStack.length < 6) {
+      this.powerStack.push('fire');
+      this.events.emit('gameDataUpdate', this.getGameData());
+      return;
+    }
+    if (event.key === '2' && this.powerStack.length < 6) {
+      this.powerStack.push('ice');
+      this.events.emit('gameDataUpdate', this.getGameData());
+      return;
+    }
+    if (event.key === '3' && this.powerStack.length < 6) {
+      this.powerStack.push('wind');
+      this.events.emit('gameDataUpdate', this.getGameData());
+      return;
+    }
+    if (event.key === '4' && this.powerStack.length < 6) {
+      this.powerStack.push('slow');
+      this.events.emit('gameDataUpdate', this.getGameData());
       return;
     }
 
@@ -126,7 +214,19 @@ export class GameScene extends Phaser.Scene {
 
   updateInputDisplay() {
     this.inputText.setText(this.typedInput.toUpperCase());
+    this.flashInputBox();
     this.events.emit('gameDataUpdate', this.getGameData());
+  }
+
+  flashInputBox() {
+    this.tweens.add({
+      targets: this.inputText,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      duration: 60,
+      yoyo: true,
+      ease: 'Power1',
+    });
   }
 
   checkWordMatch() {
@@ -159,26 +259,63 @@ export class GameScene extends Phaser.Scene {
     this.removePowerFromStack(power);
     this.activePower = power;
 
+    const powerColors: Record<PowerType, number> = {
+      none: 0xffffff,
+      fire: COLORS.POWER_FIRE,
+      ice: COLORS.POWER_ICE,
+      wind: COLORS.POWER_WIND,
+      slow: COLORS.POWER_SLOW,
+    };
+
+    if (this.iceOverlay) {
+      this.iceOverlay.destroy();
+      this.iceOverlay = undefined;
+    }
+    if (this.slowOverlay) {
+      this.slowOverlay.destroy();
+      this.slowOverlay = undefined;
+    }
+    this.words.forEach(w => {
+      w.frozen = false;
+      w.frozenIndicator?.destroy();
+      w.frozenIndicator = undefined;
+    });
+    this.slowFactor = 1;
+
+    this.showPowerFlash(powerColors[power]);
+
     switch (power) {
       case 'fire':
         this.score += this.words.length * FIRE_POINTS_PER_WORD;
         this.words.forEach(w => {
+          this.showFireParticles(w.x + w.letters.reduce((sum, l) => sum + l.width, 0) / 2, w.y);
           w.letters.forEach(l => l.destroy());
           w.container?.destroy();
+          w.frozenIndicator?.destroy();
         });
         this.words = [];
         break;
       case 'ice':
+        this.showIceOverlay();
         this.words.forEach(w => {
           w.frozen = true;
+          const totalWidth = w.letters.reduce((sum, l) => sum + l.width, 0);
+          w.frozenIndicator = this.add.text(w.x + totalWidth / 2, w.y - 25, '❄️', {
+            fontFamily: FONT_FAMILY,
+            fontSize: '20px',
+          });
+          w.frozenIndicator.setOrigin(0.5, 0.5);
+          w.frozenIndicator.setDepth(2);
         });
         this.powerTimer = POWER_DURATION_ICE;
         break;
       case 'slow':
+        this.showSlowOverlay();
         this.slowFactor = SLOW_FACTOR;
         this.powerTimer = POWER_DURATION_SLOW;
         break;
       case 'wind':
+        this.showWindEffect();
         this.limitPct = 0;
         break;
     }
@@ -203,11 +340,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   onWordComplete(word: WordObject) {
-    const points = word.textValue.length * 10;
+    this.combo++;
+
+    const comboLevel = this.getComboLevel();
+    const basePoints = word.textValue.length * 10;
+    const points = Math.floor(basePoints * (comboLevel?.multiplier || 1));
     this.score += points;
     this.wordsCompleted++;
     this.progressPct += PROGRESS_PCT_PER_WORD;
     if (this.progressPct > 100) this.progressPct = 100;
+
+    const wordCenterX = word.x + word.letters.reduce((sum, l) => sum + l.width, 0) / 2;
+    const wordCenterY = word.y;
+
+    this.showWordCompleteEffect(wordCenterX, wordCenterY, word.power);
+    this.showBurstParticles(wordCenterX, wordCenterY, word.power);
+
+    if (comboLevel) {
+      this.showComboPopup(word.x + 50, word.y, comboLevel.text, comboLevel.color);
+    }
 
     if (word.power !== 'none' && this.powerStack.length < 6) {
       this.powerStack.push(word.power);
@@ -215,16 +366,46 @@ export class GameScene extends Phaser.Scene {
 
     word.letters.forEach(l => l.destroy());
     word.container?.destroy();
+    word.frozenIndicator?.destroy();
     this.words = this.words.filter(w => w !== word);
 
     this.typedInput = '';
     this.updateInputDisplay();
 
-    if (this.progressPct >= 100) {
+    if (this.progressPct >= 100 && this.gameState === 'playing') {
       this.gameState = 'levelComplete';
     }
 
     this.events.emit('gameDataUpdate', this.getGameData());
+  }
+
+  getComboLevel(): { text: string; color: string; multiplier: number } | null {
+    for (let i = this.COMBO_LEVELS.length - 1; i >= 0; i--) {
+      if (this.combo >= this.COMBO_LEVELS[i].min) {
+        return this.COMBO_LEVELS[i];
+      }
+    }
+    return null;
+  }
+
+  showComboPopup(x: number, y: number, text: string, color: string) {
+    const popup = this.add.text(x, y, text, {
+      fontFamily: FONT_FAMILY,
+      fontSize: '36px',
+      color: color,
+      fontStyle: 'bold',
+    });
+    popup.setOrigin(0, 0.5);
+    popup.setDepth(100);
+
+    this.tweens.add({
+      targets: popup,
+      y: y - 60,
+      alpha: 0,
+      duration: 800,
+      ease: 'Power2',
+      onComplete: () => popup.destroy(),
+    });
   }
 
   update(_time: number, delta: number) {
@@ -241,16 +422,30 @@ export class GameScene extends Phaser.Scene {
     if (this.powerTimer > 0) {
       this.powerTimer -= delta;
       if (this.powerTimer <= 0) {
+        const wasIce = this.activePower === 'ice';
+        const wasSlow = this.activePower === 'slow';
         this.activePower = 'none';
         this.slowFactor = 1;
         this.words.forEach(w => {
           w.frozen = false;
+          if (w.frozenIndicator) {
+            w.frozenIndicator.destroy();
+            w.frozenIndicator = undefined;
+          }
         });
+        if (wasIce) {
+          this.hideIceOverlay();
+        }
+        if (wasSlow) {
+          this.hideSlowOverlay();
+        }
       }
     }
   }
 
   spawnWords(delta: number) {
+    if (this.activePower === 'ice') return;
+
     this.spawnTimer += delta;
     const spawnDelay = Math.max(SPAWN_DELAY_BASE - this.level * 5, 30) * (1000 / 60);
 
@@ -261,8 +456,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   createWord() {
-    const pool = getWordPoolForLevel(this.level);
-    const textValue = pool[Math.floor(Math.random() * pool.length)];
+    const wordLength = Math.min(4 + Math.floor((this.level - 1) / 3), 10);
+    const textValue = wordService.getWord(wordLength);
     const speed = (BASE_FALL_SPEED + (this.level - 1) * 0.15) * (0.8 + Math.random() * 0.4);
 
     let power: PowerType = 'none';
@@ -272,8 +467,8 @@ export class GameScene extends Phaser.Scene {
       power = powers[Math.floor(Math.random() * powers.length)];
     }
 
-    const x = Math.random() * (GAME_AREA_WIDTH - 150) + 20;
-    const y = -30;
+    const x = Math.random() * (GAME_AREA_WIDTH - 225) + 30;
+    const y = -45;
 
     const style: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: FONT_FAMILY,
@@ -285,12 +480,13 @@ export class GameScene extends Phaser.Scene {
     let letterX = x;
     for (const char of textValue.toUpperCase()) {
       const letterText = this.add.text(letterX, y, char, style);
+      letterText.setAlpha(0);
       letters.push(letterText);
       letterX += letterText.width;
     }
 
     const totalWidth = letterX - x;
-    let container: Phaser.GameObjects.Rectangle | undefined;
+    let container: Phaser.GameObjects.Graphics | undefined;
     if (power !== 'none') {
       const powerColors: Record<PowerType, number> = {
         none: 0,
@@ -299,16 +495,41 @@ export class GameScene extends Phaser.Scene {
         wind: COLORS.POWER_WIND,
         slow: COLORS.POWER_SLOW,
       };
-      const padding = 8;
-      container = this.add.rectangle(
-        x + totalWidth / 2,
-        y + 13,
-        totalWidth + padding * 2,
-        26,
-        powerColors[power]
-      );
+      const padding = 14;
+      const containerW = totalWidth + padding * 2;
+      const containerH = 44;
+      const centerX = x + totalWidth / 2;
+      const containerX = centerX - containerW / 2;
+      const containerY = y - 2;
+
+      container = this.add.graphics();
+      container.fillStyle(0x000000, 0.4);
+      container.fillRoundedRect(containerX + 3, containerY + 3, containerW, containerH, 10);
+      container.fillStyle(powerColors[power], 1);
+      container.fillRoundedRect(containerX, containerY, containerW, containerH, 10);
+      container.lineStyle(2, 0xffffff, 0.3);
+      container.strokeRoundedRect(containerX, containerY, containerW, containerH, 10);
+      container.fillStyle(0xffffff, 0.2);
+      container.fillRoundedRect(containerX + 4, containerY + 3, containerW - 8, containerH / 2 - 3, 6);
+
+      container.setDepth(0);
+      container.setAlpha(0);
       letters.forEach(l => l.setDepth(1));
+
+      this.tweens.add({
+        targets: container,
+        alpha: 1,
+        duration: 200,
+        ease: 'Power2',
+      });
     }
+
+    this.tweens.add({
+      targets: letters,
+      alpha: 1,
+      duration: 200,
+      ease: 'Power2',
+    });
 
     const placeholderText = this.add.text(x, y, '', style);
 
@@ -331,7 +552,33 @@ export class GameScene extends Phaser.Scene {
       if (!word.frozen) {
         word.y += word.speed * this.slowFactor * 60 * deltaSec;
         word.letters.forEach(l => l.setY(word.y));
-        word.container?.setY(word.y + 13);
+        if (word.container && word.power !== 'none') {
+          const totalWidth = word.letters.reduce((sum, l) => sum + l.width, 0);
+          const padding = 14;
+          const containerW = totalWidth + padding * 2;
+          const containerH = 44;
+          const centerX = word.x + totalWidth / 2;
+          const containerX = centerX - containerW / 2;
+          const containerY = word.y - 2;
+
+          const powerColors: Record<PowerType, number> = {
+            none: 0,
+            fire: COLORS.POWER_FIRE,
+            ice: COLORS.POWER_ICE,
+            wind: COLORS.POWER_WIND,
+            slow: COLORS.POWER_SLOW,
+          };
+
+          word.container.clear();
+          word.container.fillStyle(0x000000, 0.4);
+          word.container.fillRoundedRect(containerX + 3, containerY + 3, containerW, containerH, 10);
+          word.container.fillStyle(powerColors[word.power], 1);
+          word.container.fillRoundedRect(containerX, containerY, containerW, containerH, 10);
+          word.container.lineStyle(2, 0xffffff, 0.3);
+          word.container.strokeRoundedRect(containerX, containerY, containerW, containerH, 10);
+          word.container.fillStyle(0xffffff, 0.2);
+          word.container.fillRoundedRect(containerX + 4, containerY + 3, containerW - 8, containerH / 2 - 3, 6);
+        }
       }
     }
   }
@@ -340,8 +587,10 @@ export class GameScene extends Phaser.Scene {
     const toRemove: WordObject[] = [];
 
     for (const word of this.words) {
-      if (word.y >= DANGER_ZONE_Y) {
+      if (word.y + FONT_SIZE >= DANGER_ZONE_Y) {
         this.wordsMissed++;
+        this.combo = 0;
+        this.showMissedWordEffect(word);
         this.limitPct += LIMIT_PCT_PER_MISSED;
         if (this.limitPct >= 100) {
           this.limitPct = 100;
@@ -354,6 +603,7 @@ export class GameScene extends Phaser.Scene {
     for (const word of toRemove) {
       word.letters.forEach(l => l.destroy());
       word.container?.destroy();
+      word.frozenIndicator?.destroy();
       this.words = this.words.filter(w => w !== word);
     }
 
@@ -362,21 +612,49 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  showMissedWordEffect(word: WordObject) {
+    const flash = this.add.circle(word.x + 30, word.y, 60, 0xff4444, 0.8);
+    this.tweens.add({
+      targets: flash,
+      scaleX: 2,
+      scaleY: 2,
+      alpha: 0,
+      duration: 300,
+      ease: 'Power2',
+      onComplete: () => flash.destroy(),
+    });
+
+    for (const letter of word.letters) {
+      const letterY = letter.y;
+
+      this.tweens.add({
+        targets: letter,
+        y: letterY + 100,
+        alpha: 0,
+        angle: (Math.random() - 0.5) * 60,
+        duration: 400,
+        ease: 'Power2',
+      });
+    }
+
+    this.cameras.main.shake(150, 0.005);
+  }
+
   highlightTargetWord() {
     for (const word of this.words) {
-      const isTarget = this.typedInput !== '' && 
+      const isTarget = this.typedInput !== '' &&
         word.textValue.toLowerCase().startsWith(this.typedInput.toLowerCase()) &&
         word === this.findTargetWord();
-      
+
       const matchedLen = isTarget ? this.typedInput.length : 0;
-      
+
       for (let i = 0; i < word.letters.length; i++) {
-        if (word.frozen) {
-          word.letters[i].setColor('#64b4ff');
-        } else if (i < matchedLen) {
+        if (i < matchedLen) {
           word.letters[i].setColor('#4CAF50');
         } else if (isTarget) {
           word.letters[i].setColor('#4fc3f7');
+        } else if (word.frozen) {
+          word.letters[i].setColor('#a8e6ff');
         } else {
           word.letters[i].setColor('#ffffff');
         }
@@ -388,6 +666,7 @@ export class GameScene extends Phaser.Scene {
     this.words.forEach(w => {
       w.letters.forEach(l => l.destroy());
       w.container?.destroy();
+      w.frozenIndicator?.destroy();
     });
     this.words = [];
     this.typedInput = '';
@@ -403,24 +682,41 @@ export class GameScene extends Phaser.Scene {
     this.powerTimer = 0;
     this.activePower = 'none';
     this.spawnTimer = 0;
+    this.combo = 0;
+    this.slowOverlay?.destroy();
+    this.slowOverlay = undefined;
+    this.iceOverlay?.destroy();
+    this.iceOverlay = undefined;
+    this.events.emit('gameReset');
     this.updateInputDisplay();
-    this.scene.stop('UIScene');
-    this.scene.launch('UIScene');
+    this.events.emit('gameDataUpdate', this.getGameData());
   }
 
   continueAfterLevelComplete() {
+    if (this.gameState !== 'levelComplete') return;
+
     this.score += this.calculateLevelTotal();
     this.level++;
     this.progressPct = 0;
     this.limitPct = 0;
     this.wordsCompleted = 0;
     this.wordsMissed = 0;
+    this.combo = 0;
     this.words.forEach(w => {
       w.letters.forEach(l => l.destroy());
       w.container?.destroy();
+      w.frozenIndicator?.destroy();
     });
     this.words = [];
     this.typedInput = '';
+    this.spawnTimer = 0;
+    this.activePower = 'none';
+    this.powerTimer = 0;
+    this.slowFactor = 1;
+    this.slowOverlay?.destroy();
+    this.slowOverlay = undefined;
+    this.iceOverlay?.destroy();
+    this.iceOverlay = undefined;
     this.gameState = 'playing';
     this.updateInputDisplay();
     this.events.emit('gameDataUpdate', this.getGameData());
@@ -446,5 +742,209 @@ export class GameScene extends Phaser.Scene {
 
   calculateLevelTotal(): number {
     return this.calculateAccuracyBonus() + this.calculateErrorFreeBonus();
+  }
+
+  showPowerFlash(color: number) {
+    const flash = this.add.rectangle(GAME_AREA_WIDTH / 2, GAME_HEIGHT / 2, GAME_AREA_WIDTH, GAME_HEIGHT, color, 0.5);
+    flash.setDepth(50);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => flash.destroy(),
+    });
+  }
+
+  showFireParticles(x: number, y: number) {
+    for (let i = 0; i < 8; i++) {
+      const particle = this.add.circle(
+        x + (Math.random() - 0.5) * 60,
+        y + (Math.random() - 0.5) * 30,
+        4 + Math.random() * 6,
+        COLORS.POWER_FIRE,
+        1
+      );
+      particle.setDepth(100);
+      this.tweens.add({
+        targets: particle,
+        y: particle.y - 60 - Math.random() * 60,
+        x: particle.x + (Math.random() - 0.5) * 80,
+        alpha: 0,
+        scaleX: 0,
+        scaleY: 0,
+        duration: 700 + Math.random() * 300,
+        ease: 'Power2',
+        onComplete: () => particle.destroy(),
+      });
+    }
+  }
+
+  showIceOverlay() {
+    if (this.iceOverlay) {
+      this.iceOverlay.destroy();
+    }
+    this.iceOverlay = this.add.graphics();
+    this.iceOverlay.fillStyle(COLORS.POWER_ICE, 0.15);
+    this.iceOverlay.fillRect(0, 0, GAME_AREA_WIDTH, GAME_HEIGHT);
+    this.iceOverlay.setDepth(49);
+  }
+
+  hideIceOverlay() {
+    if (this.iceOverlay) {
+      this.tweens.add({
+        targets: this.iceOverlay,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          this.iceOverlay?.destroy();
+          this.iceOverlay = undefined;
+        },
+      });
+    }
+  }
+
+  showSlowOverlay() {
+    if (this.slowOverlay) {
+      this.slowOverlay.destroy();
+    }
+    this.slowOverlay = this.add.graphics();
+    const cx = GAME_AREA_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const maxRadius = Math.sqrt(cx * cx + cy * cy);
+    for (let i = 0; i < 5; i++) {
+      const radius = maxRadius * (1 - i * 0.15);
+      const alpha = 0.05 + i * 0.03;
+      this.slowOverlay.fillStyle(COLORS.POWER_SLOW, alpha);
+      this.slowOverlay.fillCircle(cx, cy, radius);
+    }
+    this.slowOverlay.setDepth(49);
+  }
+
+  hideSlowOverlay() {
+    if (this.slowOverlay) {
+      this.tweens.add({
+        targets: this.slowOverlay,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          this.slowOverlay?.destroy();
+          this.slowOverlay = undefined;
+        },
+      });
+    }
+  }
+
+  showWindEffect() {
+    const windLines: Phaser.GameObjects.Graphics[] = [];
+    for (let i = 0; i < 12; i++) {
+      const line = this.add.graphics();
+      line.lineStyle(3, COLORS.POWER_WIND, 0.6);
+      const y = Math.random() * GAME_HEIGHT;
+      const startX = -100;
+      const length = 150 + Math.random() * 150;
+      line.lineBetween(startX, y, startX + length, y);
+      line.setDepth(50);
+      windLines.push(line);
+      this.tweens.add({
+        targets: line,
+        x: GAME_AREA_WIDTH + 200,
+        duration: 600 + Math.random() * 300,
+        ease: 'Power2',
+        onComplete: () => line.destroy(),
+      });
+    }
+  }
+
+  showWordCompleteEffect(x: number, y: number, power: PowerType) {
+    const ring = this.add.circle(x, y, 20, 0xffffff, 0.6);
+    ring.setDepth(100);
+    this.tweens.add({
+      targets: ring,
+      scaleX: 3,
+      scaleY: 3,
+      alpha: 0,
+      duration: 400,
+      ease: 'Power2',
+      onComplete: () => ring.destroy(),
+    });
+
+    if (power !== 'none') {
+      const powerColors: Record<PowerType, number> = {
+        none: 0xffffff,
+        fire: COLORS.POWER_FIRE,
+        ice: COLORS.POWER_ICE,
+        wind: COLORS.POWER_WIND,
+        slow: COLORS.POWER_SLOW,
+      };
+      const glow = this.add.circle(x, y, 30, powerColors[power], 0.4);
+      glow.setDepth(99);
+      this.tweens.add({
+        targets: glow,
+        scaleX: 2.5,
+        scaleY: 2.5,
+        alpha: 0,
+        duration: 500,
+        ease: 'Power2',
+        onComplete: () => glow.destroy(),
+      });
+    }
+  }
+
+  showBurstParticles(x: number, y: number, power: PowerType) {
+    const powerColors: Record<PowerType, number> = {
+      none: 0x4CAF50,
+      fire: COLORS.POWER_FIRE,
+      ice: COLORS.POWER_ICE,
+      wind: COLORS.POWER_WIND,
+      slow: COLORS.POWER_SLOW,
+    };
+    const color = powerColors[power];
+
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const speed = 80 + Math.random() * 60;
+      const size = 3 + Math.random() * 4;
+
+      const particle = this.add.circle(x, y, size, color, 1);
+      particle.setDepth(100);
+
+      const targetX = x + Math.cos(angle) * speed;
+      const targetY = y + Math.sin(angle) * speed;
+
+      this.tweens.add({
+        targets: particle,
+        x: targetX,
+        y: targetY,
+        alpha: 0,
+        scaleX: 0.3,
+        scaleY: 0.3,
+        duration: 450 + Math.random() * 200,
+        ease: 'Power2',
+        onComplete: () => particle.destroy(),
+      });
+    }
+
+    for (let i = 0; i < 6; i++) {
+      const spark = this.add.rectangle(
+        x + (Math.random() - 0.5) * 20,
+        y + (Math.random() - 0.5) * 20,
+        2,
+        8 + Math.random() * 8,
+        0xffffff,
+        0.8
+      );
+      spark.setDepth(100);
+      spark.setRotation(Math.random() * Math.PI);
+
+      this.tweens.add({
+        targets: spark,
+        y: spark.y - 40 - Math.random() * 40,
+        alpha: 0,
+        duration: 550,
+        ease: 'Power2',
+        onComplete: () => spark.destroy(),
+      });
+    }
   }
 }
