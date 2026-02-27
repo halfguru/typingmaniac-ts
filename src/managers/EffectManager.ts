@@ -114,7 +114,7 @@ export class EffectManager {
         x + (Math.random() - 0.5) * 60,
         y + (Math.random() - 0.5) * 30,
         4 + Math.random() * 6,
-        COLORS.POWER_FIRE,
+        POWER_COLORS.fire,
         1
       );
       particle.setDepth(100);
@@ -137,7 +137,7 @@ export class EffectManager {
       this.iceOverlay.destroy();
     }
     this.iceOverlay = this.scene.add.graphics();
-    this.iceOverlay.fillStyle(COLORS.POWER_ICE, 0.15);
+    this.iceOverlay.fillStyle(POWER_COLORS.ice, 0.15);
     this.iceOverlay.fillRect(0, 0, GAME_AREA_WIDTH, GAME_HEIGHT);
     this.iceOverlay.setDepth(49);
   }
@@ -167,7 +167,7 @@ export class EffectManager {
     for (let i = 0; i < 5; i++) {
       const radius = maxRadius * (1 - i * 0.15);
       const alpha = 0.05 + i * 0.03;
-      this.slowOverlay.fillStyle(COLORS.POWER_SLOW, alpha);
+      this.slowOverlay.fillStyle(POWER_COLORS.slow, alpha);
       this.slowOverlay.fillCircle(cx, cy, radius);
     }
     this.slowOverlay.setDepth(49);
@@ -190,7 +190,7 @@ export class EffectManager {
   showWindEffect() {
     for (let i = 0; i < 12; i++) {
       const line = this.scene.add.graphics();
-      line.lineStyle(3, COLORS.POWER_WIND, 0.6);
+      line.lineStyle(3, POWER_COLORS.wind, 0.6);
       const y = Math.random() * GAME_HEIGHT;
       const startX = -100;
       const length = 150 + Math.random() * 150;
