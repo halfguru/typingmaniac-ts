@@ -10,6 +10,7 @@ import {
   POWER_SYMBOLS,
 } from '../config/constants';
 import type { PowerType } from '../types';
+import { storageService } from '../services/StorageService';
 
 interface GameData {
   score: number;
@@ -99,35 +100,56 @@ export class UIScene extends Phaser.Scene {
       const graphics = this.powerBoxGraphics[i];
       const label = this.powerLabels[i];
       graphics.clear();
-      graphics.fillStyle(0x0f1f1f, 1);
+      graphics.fillStyle(0x0a1520, 1);
       const sidebarCenterX = GAME_AREA_WIDTH + SIDEBAR_WIDTH / 2;
       const sidebarX = sidebarCenterX - this.powerBoxW / 2;
       const startY = 378;
       const gap = 8;
       const y = startY + i * (this.powerBoxH + gap);
       graphics.fillRoundedRect(sidebarX, y, this.powerBoxW, this.powerBoxH, 6);
-      graphics.lineStyle(1, 0x2a4a4a, 0.5);
+      graphics.lineStyle(1, 0x4fc3f7, 0.2);
       graphics.strokeRoundedRect(sidebarX, y, this.powerBoxW, this.powerBoxH, 6);
       label.setText('');
     }
   }
 
   drawSidebar() {
+    const sidebarFullBg = this.add.graphics();
+    sidebarFullBg.fillStyle(0x030810, 1);
+    sidebarFullBg.fillRect(GAME_AREA_WIDTH, 0, SIDEBAR_WIDTH, GAME_HEIGHT);
+
     const centerX = GAME_AREA_WIDTH + SIDEBAR_WIDTH / 2;
     const boxWidth = SIDEBAR_WIDTH - 50;
     const boxX = centerX - boxWidth / 2;
 
     const sidebarBg = this.add.graphics();
-    sidebarBg.fillStyle(0x0d2525, 1);
+    sidebarBg.fillStyle(0x050a12, 1);
     sidebarBg.fillRoundedRect(GAME_AREA_WIDTH + 10, 20, SIDEBAR_WIDTH - 20, GAME_HEIGHT - 40, 20);
-    sidebarBg.lineStyle(3, 0x2a5a5a, 1);
-    sidebarBg.strokeRoundedRect(GAME_AREA_WIDTH + 10, 20, SIDEBAR_WIDTH - 20, GAME_HEIGHT - 40, 20);
+    
+    for (let i = 0; i < 3; i++) {
+      sidebarBg.lineStyle(2 - i * 0.5, 0x4fc3f7, 0.3 - i * 0.1);
+      sidebarBg.strokeRoundedRect(GAME_AREA_WIDTH + 10 + i, 20 + i, SIDEBAR_WIDTH - 20 - i * 2, GAME_HEIGHT - 40 - i * 2, 20 - i);
+    }
+
+    const sidebarGlow = this.add.graphics();
+    sidebarGlow.fillStyle(0x4fc3f7, 0.03);
+    sidebarGlow.fillRoundedRect(GAME_AREA_WIDTH + 15, 25, SIDEBAR_WIDTH - 30, GAME_HEIGHT - 50, 18);
+    this.tweens.add({
+      targets: sidebarGlow,
+      alpha: { from: 1, to: 0.5 },
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     const levelBox = this.add.graphics();
-    levelBox.fillStyle(0x1a3a3a, 1);
+    levelBox.fillStyle(0x0a1520, 1);
     levelBox.fillRoundedRect(boxX, 50, boxWidth, 100, 12);
-    levelBox.lineStyle(2, 0x2a5a5a, 0.5);
+    levelBox.lineStyle(2, 0x4fc3f7, 0.6);
     levelBox.strokeRoundedRect(boxX, 50, boxWidth, 100, 12);
+    levelBox.fillStyle(0x4fc3f7, 0.08);
+    levelBox.fillRoundedRect(boxX + 4, 54, boxWidth - 8, 45, 8);
 
     const levelLabel = this.add.text(centerX, 75, 'LEVEL', {
       fontFamily: FONT_FAMILY,
@@ -143,17 +165,20 @@ export class UIScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     this.levelText.setOrigin(0.5, 0.5);
+    this.levelText.setShadow(0, 0, '#4fc3f7', 8, true, true);
 
     const scoreBox = this.add.graphics();
-    scoreBox.fillStyle(0x1a3a3a, 1);
+    scoreBox.fillStyle(0x0a1520, 1);
     scoreBox.fillRoundedRect(boxX, 180, boxWidth, 130, 12);
-    scoreBox.lineStyle(2, 0x2a5a5a, 0.5);
+    scoreBox.lineStyle(2, 0xff6b35, 0.6);
     scoreBox.strokeRoundedRect(boxX, 180, boxWidth, 130, 12);
+    scoreBox.fillStyle(0xff6b35, 0.08);
+    scoreBox.fillRoundedRect(boxX + 4, 184, boxWidth - 8, 55, 8);
 
     const scoreLabel = this.add.text(centerX, 205, 'SCORE', {
       fontFamily: FONT_FAMILY,
       fontSize: '24px',
-      color: '#7ab8b8',
+      color: '#cc8866',
     });
     scoreLabel.setOrigin(0.5, 0.5);
 
@@ -164,6 +189,7 @@ export class UIScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     this.scoreText.setOrigin(0.5, 0.5);
+    this.scoreText.setShadow(0, 0, '#ff6b35', 10, true, true);
 
     const specialLabel = this.add.text(centerX, 340, 'SPECIAL', {
       fontFamily: FONT_FAMILY,
@@ -182,18 +208,18 @@ export class UIScene extends Phaser.Scene {
     const boxH = this.powerBoxH;
 
     const containerBg = this.add.graphics();
-    containerBg.fillStyle(0x0a1515, 0.9);
+    containerBg.fillStyle(0x050a12, 1);
     containerBg.fillRoundedRect(sidebarX - 8, startY - 8, boxW + 16, (boxH + gap) * MAX_POWER_STACK + 8, 12);
-    containerBg.lineStyle(2, 0x1a3a3a, 0.8);
+    containerBg.lineStyle(1, 0x4fc3f7, 0.3);
     containerBg.strokeRoundedRect(sidebarX - 8, startY - 8, boxW + 16, (boxH + gap) * MAX_POWER_STACK + 8, 12);
 
     for (let i = 0; i < MAX_POWER_STACK; i++) {
       const y = startY + i * (this.powerBoxH + gap);
 
       const slotBg = this.add.graphics();
-      slotBg.fillStyle(0x0f1f1f, 1);
+      slotBg.fillStyle(0x0a1520, 1);
       slotBg.fillRoundedRect(sidebarX, y, this.powerBoxW, this.powerBoxH, 6);
-      slotBg.lineStyle(1, 0x2a4a4a, 0.5);
+      slotBg.lineStyle(1, 0x4fc3f7, 0.2);
       slotBg.strokeRoundedRect(sidebarX, y, this.powerBoxW, this.powerBoxH, 6);
 
       this.powerBoxGraphics.push(slotBg);
@@ -233,26 +259,32 @@ export class UIScene extends Phaser.Scene {
     const barH = this.progressBarH;
     const radius = 8;
 
-    const drawBarContainer = (x: number) => {
+    const drawBarContainer = (x: number, glowColor: number) => {
+      const outerGlow = this.add.graphics();
+      for (let i = 3; i >= 0; i--) {
+        outerGlow.fillStyle(glowColor, 0.05 - i * 0.01);
+        outerGlow.fillRoundedRect(x - barW / 2 - 8 - i * 2, barY - 8 - i * 2, barW + 16 + i * 4, barH + 16 + i * 4, radius + 8);
+      }
+
       const container = this.add.graphics();
-      container.fillStyle(0x0a0a0a, 0.9);
+      container.fillStyle(0x050a12, 1);
       container.fillRoundedRect(x - barW / 2 - 4, barY - 4, barW + 8, barH + 8, radius + 4);
-      container.fillStyle(0x1a1a1a, 1);
+      container.fillStyle(0x0a1520, 1);
       container.fillRoundedRect(x - barW / 2, barY, barW, barH, radius);
-      container.lineStyle(2, 0x3a3a3a, 1);
+      container.lineStyle(2, glowColor, 0.4);
       container.strokeRoundedRect(x - barW / 2, barY, barW, barH, radius);
       for (let i = 1; i < 4; i++) {
         const tickY = barY + (barH / 4) * i;
-        container.lineStyle(1, 0x3a3a3a, 0.8);
+        container.lineStyle(1, glowColor, 0.15);
         container.lineBetween(x - barW / 2 + 4, tickY, x + barW / 2 - 4, tickY);
       }
       const shine = this.add.graphics();
-      shine.fillStyle(0xffffff, 0.08);
+      shine.fillStyle(0xffffff, 0.05);
       shine.fillRoundedRect(x - barW / 2 + 3, barY + 3, barW - 6, barH / 3, radius - 2);
     };
 
-    drawBarContainer(limitBarX);
-    drawBarContainer(progressBarX);
+    drawBarContainer(limitBarX, 0xff4444);
+    drawBarContainer(progressBarX, 0x4ecdc4);
 
     this.limitBarGraphics = this.add.graphics();
     this.progressBarGraphics = this.add.graphics();
@@ -264,6 +296,7 @@ export class UIScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     limitLabel.setOrigin(0.5, 0);
+    limitLabel.setShadow(0, 0, '#ff4444', 6, true, true);
 
     this.limitPctText = this.add.text(limitBarX, barBottom + 38, '0%', {
       fontFamily: FONT_FAMILY,
@@ -272,6 +305,7 @@ export class UIScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     this.limitPctText.setOrigin(0.5, 0);
+    this.limitPctText.setShadow(0, 0, '#ff4444', 8, true, true);
 
     const progressLabel = this.add.text(progressBarX, 665, 'PROG', {
       fontFamily: FONT_FAMILY,
@@ -280,6 +314,7 @@ export class UIScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     progressLabel.setOrigin(0.5, 0);
+    progressLabel.setShadow(0, 0, '#4ecdc4', 6, true, true);
 
     this.progressPctText = this.add.text(progressBarX, barBottom + 38, '0%', {
       fontFamily: FONT_FAMILY,
@@ -288,6 +323,7 @@ export class UIScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     this.progressPctText.setOrigin(0.5, 0);
+    this.progressPctText.setShadow(0, 0, '#4ecdc4', 8, true, true);
 
     this.drawLimitBar(0);
     this.drawProgressBar(0);
@@ -489,25 +525,26 @@ export class UIScene extends Phaser.Scene {
         const power = data.powerStack[i];
         const color = POWER_COLORS[power];
 
-        graphics.fillStyle(0x0a0a0a, 0.5);
+        graphics.fillStyle(0x050a12, 0.8);
         graphics.fillRoundedRect(sidebarX + 2, y + 2, boxW, boxH, 6);
 
         graphics.fillStyle(color, 1);
         graphics.fillRoundedRect(sidebarX, y, boxW, boxH, 6);
 
-        graphics.lineStyle(2, 0xffffff, 0.25);
+        graphics.lineStyle(2, color, 0.8);
         graphics.strokeRoundedRect(sidebarX, y, boxW, boxH, 6);
 
-        graphics.fillStyle(0xffffff, 0.15);
+        graphics.fillStyle(0xffffff, 0.2);
         graphics.fillRoundedRect(sidebarX + 4, y + 2, boxW - 8, boxH / 2 - 2, 4);
 
         label.setText(`${POWER_SYMBOLS[power]} ${POWER_NAMES[power]}`);
         label.setColor('#ffffff');
-        label.setShadow(1, 1, '#000000', 3, true, true);
+        const shadowColor = '#' + color.toString(16).padStart(6, '0');
+        label.setShadow(0, 0, shadowColor, 6, true, true);
       } else {
-        graphics.fillStyle(0x0f1f1f, 1);
+        graphics.fillStyle(0x0a1520, 1);
         graphics.fillRoundedRect(sidebarX, y, boxW, boxH, 6);
-        graphics.lineStyle(1, 0x2a4a4a, 0.4);
+        graphics.lineStyle(1, 0x4fc3f7, 0.2);
         graphics.strokeRoundedRect(sidebarX, y, boxW, boxH, 6);
         label.setText('');
         label.setShadow(0, 0, '#000000', 0, false, false);
@@ -517,6 +554,13 @@ export class UIScene extends Phaser.Scene {
 
   showGameOver() {
     if (this.gameOverOverlay) return;
+
+    const gameScene = this.scene.get('GameScene') as any;
+    const finalScore = gameScene.score;
+    const finalLevel = gameScene.level;
+    const isNewHighScore = storageService.setHighScore(finalScore);
+    const highScore = storageService.getHighScore();
+    const leaderboardPosition = storageService.addToLeaderboard(finalScore, finalLevel);
 
     this.gameOverOverlay = this.add.container(0, 0);
 
@@ -535,7 +579,7 @@ export class UIScene extends Phaser.Scene {
     this.gameOverOverlay.add(vignette);
 
     const panelW = 520;
-    const panelH = 400;
+    const panelH = 480;
     const panelX = GAME_WIDTH / 2 - panelW / 2;
     const panelY = GAME_HEIGHT / 2 - panelH / 2;
 
@@ -548,17 +592,17 @@ export class UIScene extends Phaser.Scene {
     panel.strokeRoundedRect(panelX + 8, panelY + 8, panelW - 16, panelH - 16, 20);
     this.gameOverOverlay.add(panel);
 
-    const skull = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 140, '💀', {
-      fontSize: '80px',
+    const skull = this.add.text(GAME_WIDTH / 2, panelY + 60, '💀', {
+      fontSize: '70px',
     });
     skull.setOrigin(0.5, 0.5);
     skull.setAlpha(0);
     skull.setScale(0);
     this.gameOverOverlay.add(skull);
 
-    const gameOverText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50, 'GAME OVER', {
+    const gameOverText = this.add.text(GAME_WIDTH / 2, panelY + 140, 'GAME OVER', {
       fontFamily: FONT_FAMILY,
-      fontSize: '72px',
+      fontSize: '56px',
       color: '#ff4444',
       fontStyle: 'bold',
     });
@@ -567,20 +611,18 @@ export class UIScene extends Phaser.Scene {
     gameOverText.setScale(0.5);
     this.gameOverOverlay.add(gameOverText);
 
-    const scoreLabel = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30, 'FINAL SCORE', {
+    const scoreLabel = this.add.text(GAME_WIDTH / 2, panelY + 210, 'SCORE', {
       fontFamily: FONT_FAMILY,
-      fontSize: '24px',
+      fontSize: '20px',
       color: '#7ab8b8',
     });
     scoreLabel.setOrigin(0.5, 0.5);
     scoreLabel.setAlpha(0);
     this.gameOverOverlay.add(scoreLabel);
 
-    const gameScene = this.scene.get('GameScene') as any;
-    const finalScore = gameScene.score;
-    const scoreValue = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 75, '0', {
+    const scoreValue = this.add.text(GAME_WIDTH / 2, panelY + 250, '0', {
       fontFamily: FONT_FAMILY,
-      fontSize: '56px',
+      fontSize: '48px',
       color: '#ff8c42',
       fontStyle: 'bold',
     });
@@ -588,9 +630,51 @@ export class UIScene extends Phaser.Scene {
     scoreValue.setAlpha(0);
     this.gameOverOverlay.add(scoreValue);
 
-    const restartText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 150, 'Press SPACE to restart', {
+    const highScoreLabel = this.add.text(GAME_WIDTH / 2, panelY + 320, 'HIGH SCORE', {
       fontFamily: FONT_FAMILY,
-      fontSize: '28px',
+      fontSize: '20px',
+      color: '#7ab8b8',
+    });
+    highScoreLabel.setOrigin(0.5, 0.5);
+    highScoreLabel.setAlpha(0);
+    this.gameOverOverlay.add(highScoreLabel);
+
+    const highScoreValue = this.add.text(GAME_WIDTH / 2, panelY + 360, this.formatNumber(highScore), {
+      fontFamily: FONT_FAMILY,
+      fontSize: '36px',
+      color: isNewHighScore ? '#4fc3f7' : '#5a8a8a',
+      fontStyle: 'bold',
+    });
+    highScoreValue.setOrigin(0.5, 0.5);
+    highScoreValue.setAlpha(0);
+    this.gameOverOverlay.add(highScoreValue);
+
+    let newRecordText: Phaser.GameObjects.Text | null = null;
+    if (isNewHighScore) {
+      newRecordText = this.add.text(GAME_WIDTH / 2, panelY + 400, '🏆 NEW RECORD! 🏆', {
+        fontFamily: FONT_FAMILY,
+        fontSize: '24px',
+        color: '#ffd700',
+        fontStyle: 'bold',
+      });
+      newRecordText.setOrigin(0.5, 0.5);
+      newRecordText.setAlpha(0);
+      this.gameOverOverlay.add(newRecordText);
+    } else if (leaderboardPosition >= 0 && leaderboardPosition < 5) {
+      newRecordText = this.add.text(GAME_WIDTH / 2, panelY + 400, `🏆 #${leaderboardPosition + 1} ON LEADERBOARD!`, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '22px',
+        color: '#4fc3f7',
+        fontStyle: 'bold',
+      });
+      newRecordText.setOrigin(0.5, 0.5);
+      newRecordText.setAlpha(0);
+      this.gameOverOverlay.add(newRecordText);
+    }
+
+    const restartText = this.add.text(GAME_WIDTH / 2, panelY + (newRecordText ? 445 : 420), 'Press SPACE to restart', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '24px',
       color: '#4fc3f7',
     });
     restartText.setOrigin(0.5, 0.5);
@@ -661,6 +745,42 @@ export class UIScene extends Phaser.Scene {
 
         this.time.delayedCall(1200, () => {
           this.tweens.add({
+            targets: highScoreLabel,
+            alpha: 1,
+            duration: 200,
+          });
+          this.tweens.add({
+            targets: highScoreValue,
+            alpha: 1,
+            duration: 200,
+            onComplete: () => {
+              if (isNewHighScore && newRecordText) {
+                this.time.delayedCall(300, () => {
+                  this.tweens.add({
+                    targets: newRecordText,
+                    alpha: 1,
+                    scaleX: 1.2,
+                    scaleY: 1.2,
+                    duration: 200,
+                    yoyo: true,
+                    repeat: 2,
+                    onComplete: () => {
+                      this.tweens.add({
+                        targets: newRecordText,
+                        alpha: 1,
+                        scaleX: 1,
+                        scaleY: 1,
+                      });
+                    },
+                  });
+                });
+              }
+            },
+          });
+        });
+
+        this.time.delayedCall(1800, () => {
+          this.tweens.add({
             targets: restartText,
             alpha: 1,
             duration: 200,
@@ -697,20 +817,22 @@ export class UIScene extends Phaser.Scene {
 
     const scrollX = GAME_WIDTH / 2;
     const scrollY = GAME_HEIGHT / 2;
-    const scrollW = 500;
-    const scrollH = 580;
+    const scrollW = 480;
+    const scrollH = 520;
 
     const scrollOuter = this.add.graphics();
-    scrollOuter.fillStyle(0x8b5a2b, 1);
+    scrollOuter.fillStyle(0x050a12, 1);
     scrollOuter.fillRoundedRect(scrollX - scrollW / 2, scrollY - scrollH / 2, scrollW, scrollH, 20);
-    scrollOuter.lineStyle(6, 0x5a3a1a, 1);
-    scrollOuter.strokeRoundedRect(scrollX - scrollW / 2, scrollY - scrollH / 2, scrollW, scrollH, 20);
+    for (let i = 0; i < 3; i++) {
+      scrollOuter.lineStyle(2 - i * 0.5, 0x4fc3f7, 0.5 - i * 0.1);
+      scrollOuter.strokeRoundedRect(scrollX - scrollW / 2 + i, scrollY - scrollH / 2 + i, scrollW - i * 2, scrollH - i * 2, 20 - i);
+    }
     this.levelCompleteOverlay.add(scrollOuter);
 
-    const scrollInner = this.add.graphics();
-    scrollInner.fillStyle(0xd2b48c, 1);
-    scrollInner.fillRoundedRect(scrollX - scrollW / 2 + 15, scrollY - scrollH / 2 + 15, scrollW - 30, scrollH - 30, 15);
-    this.levelCompleteOverlay.add(scrollInner);
+    const scrollGlow = this.add.graphics();
+    scrollGlow.fillStyle(0x4fc3f7, 0.05);
+    scrollGlow.fillRoundedRect(scrollX - scrollW / 2 + 10, scrollY - scrollH / 2 + 10, scrollW - 20, scrollH - 20, 15);
+    this.levelCompleteOverlay.add(scrollGlow);
 
     const gameScene = this.scene.get('GameScene') as any;
     const currentScore = gameScene.score;
@@ -721,25 +843,26 @@ export class UIScene extends Phaser.Scene {
     const bonusTotal = gameScene.calculateLevelTotal();
     const finalScore = currentScore + bonusTotal;
 
-    const titleText = this.add.text(scrollX, scrollY - 240, 'LEVEL COMPLETE!', {
+    const titleText = this.add.text(scrollX, scrollY - 210, 'LEVEL COMPLETE!', {
       fontFamily: FONT_FAMILY,
       fontSize: '42px',
-      color: '#4a2a0a',
+      color: '#4fc3f7',
       fontStyle: 'bold',
     });
     titleText.setOrigin(0.5, 0.5);
+    titleText.setShadow(0, 0, '#4fc3f7', 12, true, true);
     this.levelCompleteOverlay.add(titleText);
 
     const divider = this.add.graphics();
-    divider.lineStyle(2, 0x8b5a2b, 0.5);
-    divider.lineBetween(scrollX - 180, scrollY - 190, scrollX + 180, scrollY - 190);
+    divider.lineStyle(2, 0x4fc3f7, 0.3);
+    divider.lineBetween(scrollX - 180, scrollY - 165, scrollX + 180, scrollY - 165);
     this.levelCompleteOverlay.add(divider);
 
     const stats: { label: string; value: number; suffix: string; y: number }[] = [
-      { label: 'Accuracy', value: accuracy, suffix: '%', y: -130 },
-      { label: 'Bonus', value: accBonus, suffix: '', y: -70 },
-      { label: errorFree ? 'Error Free' : 'Errors', value: -1, suffix: errorFree ? ':)' : ':(', y: 0 },
-      { label: 'Bonus', value: errBonus, suffix: '', y: 60 },
+      { label: 'Accuracy', value: accuracy, suffix: '%', y: -110 },
+      { label: 'Bonus', value: accBonus, suffix: '', y: -50 },
+      { label: errorFree ? 'Error Free' : 'Errors', value: -1, suffix: errorFree ? ':)' : ':(', y: 10 },
+      { label: 'Bonus', value: errBonus, suffix: '', y: 70 },
     ];
 
     const valueTexts: Phaser.GameObjects.Text[] = [];
@@ -747,8 +870,8 @@ export class UIScene extends Phaser.Scene {
     for (const stat of stats) {
       const label = this.add.text(scrollX - 80, scrollY + stat.y, stat.label, {
         fontFamily: FONT_FAMILY,
-        fontSize: '28px',
-        color: '#5a3a1a',
+        fontSize: '24px',
+        color: '#7ab8b8',
       });
       label.setOrigin(0, 0.5);
       label.setAlpha(0);
@@ -757,8 +880,8 @@ export class UIScene extends Phaser.Scene {
       const isSpecial = stat.value < 0;
       const value = this.add.text(scrollX + 120, scrollY + stat.y, isSpecial ? stat.suffix : '0' + stat.suffix, {
         fontFamily: FONT_FAMILY,
-        fontSize: '28px',
-        color: '#4a2a0a',
+        fontSize: '24px',
+        color: '#ffffff',
         fontStyle: 'bold',
       });
       value.setOrigin(1, 0.5);
@@ -793,14 +916,14 @@ export class UIScene extends Phaser.Scene {
     }
 
     const divider2 = this.add.graphics();
-    divider2.lineStyle(2, 0x8b5a2b, 0.5);
+    divider2.lineStyle(2, 0x4fc3f7, 0.3);
     divider2.lineBetween(scrollX - 180, scrollY + 120, scrollX + 180, scrollY + 120);
     this.levelCompleteOverlay.add(divider2);
 
     const totalLabel = this.add.text(scrollX - 180, scrollY + 170, 'TOTAL SCORE', {
       fontFamily: FONT_FAMILY,
-      fontSize: '32px',
-      color: '#5a3a1a',
+      fontSize: '28px',
+      color: '#7ab8b8',
       fontStyle: 'bold',
     });
     totalLabel.setOrigin(0, 0.5);
@@ -808,11 +931,12 @@ export class UIScene extends Phaser.Scene {
 
     const totalValue = this.add.text(scrollX + 180, scrollY + 170, this.formatNumber(currentScore), {
       fontFamily: FONT_FAMILY,
-      fontSize: '38px',
-      color: '#ff6b35',
+      fontSize: '36px',
+      color: '#ff8c42',
       fontStyle: 'bold',
     });
     totalValue.setOrigin(1, 0.5);
+    totalValue.setShadow(0, 0, '#ff6b35', 10, true, true);
     this.levelCompleteOverlay.add(totalValue);
 
     this.levelCompleteTimer = this.time.delayedCall(2400, () => {
@@ -828,10 +952,10 @@ export class UIScene extends Phaser.Scene {
       this.levelCompleteTweens.push(this.levelCompleteTween);
     });
 
-    const continueText = this.add.text(scrollX, scrollY + 250, 'Press ENTER', {
+    const continueText = this.add.text(scrollX, scrollY + 230, 'Press ENTER', {
       fontFamily: FONT_FAMILY,
-      fontSize: '24px',
-      color: '#8b5a2b',
+      fontSize: '22px',
+      color: '#4fc3f7',
     });
     continueText.setOrigin(0.5, 0.5);
     this.levelCompleteOverlay.add(continueText);

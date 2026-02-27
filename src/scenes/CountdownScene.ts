@@ -1,13 +1,18 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FONT_FAMILY } from '../config/constants';
+import { audioService } from '../services/AudioService';
+import { BackgroundRenderer } from '../services/BackgroundRenderer';
 
 export class CountdownScene extends Phaser.Scene {
+  private fadeOverlay?: Phaser.GameObjects.Rectangle;
+
   constructor() {
     super({ key: 'CountdownScene' });
   }
 
   create() {
     this.drawBackground();
+    this.createFadeOverlay();
 
     const sequence = [
       { text: '3', duration: 800 },
@@ -20,7 +25,7 @@ export class CountdownScene extends Phaser.Scene {
 
     const showNext = () => {
       if (currentIndex >= sequence.length) {
-        this.scene.start('GameScene');
+        this.transitionToGame();
         return;
       }
 
@@ -63,18 +68,34 @@ export class CountdownScene extends Phaser.Scene {
     showNext();
   }
 
+  createFadeOverlay() {
+    this.fadeOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1);
+    this.fadeOverlay.setDepth(1000);
+
+    this.tweens.add({
+      targets: this.fadeOverlay,
+      alpha: 0,
+      duration: 400,
+      ease: 'Power2',
+    });
+  }
+
+  transitionToGame() {
+    if (!this.fadeOverlay) return;
+
+    this.tweens.add({
+      targets: this.fadeOverlay,
+      alpha: 1,
+      duration: 300,
+      ease: 'Power2',
+      onComplete: () => {
+        audioService.startMusic();
+        this.scene.start('GameScene');
+      },
+    });
+  }
+
   drawBackground() {
-    const graphics = this.add.graphics();
-    
-    const colorTop = Phaser.Display.Color.IntegerToColor(0x0d2b2b);
-    const colorBottom = Phaser.Display.Color.IntegerToColor(0x1a4a4a);
-    
-    for (let y = 0; y < GAME_HEIGHT; y++) {
-      const ratio = y / GAME_HEIGHT;
-      const color = Phaser.Display.Color.Interpolate.ColorWithColor(colorTop, colorBottom, 100, ratio * 100);
-      const colorInt = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
-      graphics.fillStyle(colorInt, 1);
-      graphics.fillRect(0, y, GAME_WIDTH, 1);
-    }
+    BackgroundRenderer.draw(this);
   }
 }

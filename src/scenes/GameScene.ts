@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import type { PowerType, GameState as GState } from '../types';
 import { wordService } from '../services/WordService';
+import { audioService } from '../services/AudioService';
+import { BackgroundRenderer } from '../services/BackgroundRenderer';
 import {
   GAME_AREA_WIDTH,
   GAME_WIDTH,
@@ -71,42 +73,14 @@ export class GameScene extends Phaser.Scene {
     this.drawBackground();
     this.drawDangerZone();
     this.drawInputArea();
+    this.createFadeOverlay();
     this.input.keyboard!.on('keydown', this.handleKeyDown, this);
     this.scene.launch('UIScene');
     this.events.emit('gameDataUpdate', this.getGameData());
   }
 
   drawBackground() {
-    const graphics = this.add.graphics();
-
-    const colorTop = Phaser.Display.Color.IntegerToColor(0x0d2b2b);
-    const colorBottom = Phaser.Display.Color.IntegerToColor(0x1a4a4a);
-
-    for (let y = 0; y < GAME_HEIGHT; y++) {
-      const ratio = y / GAME_HEIGHT;
-      const color = Phaser.Display.Color.Interpolate.ColorWithColor(colorTop, colorBottom, 100, ratio * 100);
-      const colorInt = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
-      graphics.fillStyle(colorInt, 1);
-      graphics.fillRect(0, y, GAME_WIDTH, 1);
-    }
-
-    for (let i = 0; i < 15; i++) {
-      const x = Math.random() * GAME_AREA_WIDTH;
-      const y = Math.random() * GAME_HEIGHT;
-      const size = 2 + Math.random() * 3;
-      const alpha = 0.1 + Math.random() * 0.2;
-
-      const star = this.add.circle(x, y, size, 0x4fc3f7, alpha);
-
-      this.tweens.add({
-        targets: star,
-        alpha: { from: alpha, to: alpha * 0.3 },
-        duration: 2000 + Math.random() * 3000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
+    BackgroundRenderer.draw(this, GAME_AREA_WIDTH);
   }
 
   getGameData() {
@@ -124,25 +98,120 @@ export class GameScene extends Phaser.Scene {
   }
 
   drawDangerZone() {
-    const graphics = this.add.graphics();
+    const zoneHeight = 80;
+    const zoneY = DANGER_ZONE_Y;
 
-    for (let i = 3; i >= 0; i--) {
-      const alpha = 0.15 - i * 0.03;
-      graphics.fillStyle(0xC83C3C, alpha);
-      graphics.fillRect(0, DANGER_ZONE_Y - i * 2, GAME_WIDTH, 4 + i * 4);
+    const zoneBg = this.add.graphics();
+    const gradientSteps = 20;
+    for (let i = 0; i < gradientSteps; i++) {
+      const ratio = i / gradientSteps;
+      const alpha = 0.6 * (1 - ratio);
+      const r = Math.floor(200 - ratio * 80);
+      const g = Math.floor(60 - ratio * 40);
+      const b = Math.floor(60 - ratio * 40);
+      const color = (r << 16) | (g << 8) | b;
+      zoneBg.fillStyle(color, alpha);
+      zoneBg.fillRect(0, zoneY + (ratio * zoneHeight), GAME_AREA_WIDTH, zoneHeight / gradientSteps + 1);
     }
+    zoneBg.setDepth(5);
 
-    const coreLine = this.add.rectangle(GAME_WIDTH / 2, DANGER_ZONE_Y + 2, GAME_WIDTH, 3, 0xff4444);
-    coreLine.setAlpha(0.9);
+    const topGlow = this.add.graphics();
+    for (let i = 0; i < 15; i++) {
+      const alpha = 0.4 - i * 0.025;
+      topGlow.fillStyle(0xff6644, Math.max(0, alpha));
+      topGlow.fillRect(0, zoneY - i * 3, GAME_AREA_WIDTH, 3);
+    }
+    topGlow.setDepth(6);
+
+    const coreLine = this.add.graphics();
+    coreLine.fillStyle(0xff8844, 1);
+    coreLine.fillRect(0, zoneY - 2, GAME_AREA_WIDTH, 4);
+    coreLine.fillStyle(0xffcc88, 0.8);
+    coreLine.fillRect(0, zoneY - 1, GAME_AREA_WIDTH, 2);
+    coreLine.setDepth(7);
 
     this.tweens.add({
-      targets: coreLine,
-      alpha: { from: 0.9, to: 0.5 },
-      duration: 800,
+      targets: topGlow,
+      alpha: { from: 1, to: 0.6 },
+      duration: 500,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
+
+    this.tweens.add({
+      targets: coreLine,
+      alpha: { from: 1, to: 0.7 },
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this.createFlameParticles(zoneY);
+  }
+
+  createFlameParticles(zoneY: number) {
+    const flameCount = 25;
+    
+    for (let i = 0; i < flameCount; i++) {
+      const x = (GAME_AREA_WIDTH / flameCount) * i + Math.random() * (GAME_AREA_WIDTH / flameCount);
+      this.createFlame(x, zoneY);
+    }
+  }
+
+  createFlame(baseX: number, baseY: number) {
+    const flame = this.add.graphics();
+    flame.setDepth(8);
+
+    const animData = { progress: 0 };
+
+    const animate = () => {
+      animData.progress = 0;
+      const targetX = baseX + (Math.random() - 0.5) * 10;
+      const duration = 200 + Math.random() * 300;
+      const scale = 0.5 + Math.random() * 0.5;
+
+      this.tweens.add({
+        targets: animData,
+        progress: 1,
+        duration: duration,
+        onUpdate: () => {
+          const p = animData.progress;
+          const currentScale = scale * (1 - p * 0.5);
+          const currentAlpha = 1 - p * 0.7;
+          const offsetY = p * 20;
+          const offsetX = (targetX - baseX) * p;
+          
+          flame.clear();
+          const height = 20 + currentScale * 15;
+          const width = 8 + currentScale * 4;
+
+          for (let i = 0; i < 5; i++) {
+            const layerAlpha = currentAlpha * (1 - i * 0.15);
+            const layerHeight = height * (1 - i * 0.1);
+            const layerWidth = width * (1 - i * 0.15);
+            
+            const r = 255;
+            const g = Math.floor(100 + i * 30);
+            const b = Math.floor(30 + i * 20);
+            const color = (r << 16) | (g << 8) | b;
+            
+            flame.fillStyle(color, layerAlpha);
+            flame.fillTriangle(
+              baseX + offsetX, baseY - layerHeight - offsetY,
+              baseX + offsetX - layerWidth / 2, baseY - offsetY,
+              baseX + offsetX + layerWidth / 2, baseY - offsetY
+            );
+          }
+        },
+        onComplete: () => {
+          animate();
+        },
+      });
+    };
+
+    animate();
   }
 
   drawInputArea() {
@@ -151,14 +220,37 @@ export class GameScene extends Phaser.Scene {
     const containerX = GAME_AREA_WIDTH / 2 - containerW / 2;
     const containerY = GAME_HEIGHT - 90;
 
-    this.add.rectangle(containerX + containerW / 2, containerY + containerH / 2, containerW, containerH, COLORS.BG_PANEL);
+  
+    const inputBg = this.add.graphics();
+    inputBg.fillStyle(0x050a12, 1);
+    inputBg.fillRoundedRect(containerX, containerY, containerW, containerH, 12);
+    inputBg.lineStyle(2, 0x4fc3f7, 0.6);
+    inputBg.strokeRoundedRect(containerX, containerY, containerW, containerH, 12);
+    inputBg.fillStyle(0x4fc3f7, 0.1);
+    inputBg.fillRoundedRect(containerX + 4, containerY + 4, containerW - 8, containerH / 2 - 4, 6);
 
+  
     this.inputText = this.add.text(GAME_AREA_WIDTH / 2, containerY + containerH / 2, '', {
       fontFamily: FONT_FAMILY,
       fontSize: `${FONT_SIZE}px`,
       color: '#4fc3f7',
     });
     this.inputText.setOrigin(0.5, 0.5);
+    this.inputText.setShadow(0, 0, '#4fc3f7', 10, true, true);
+  }
+
+  private fadeOverlay?: Phaser.GameObjects.Rectangle;
+
+  createFadeOverlay() {
+    this.fadeOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1);
+    this.fadeOverlay.setDepth(2000);
+
+    this.tweens.add({
+      targets: this.fadeOverlay,
+      alpha: 0,
+      duration: 400,
+      ease: 'Power2',
+    });
   }
 
   handleKeyDown(event: KeyboardEvent) {
@@ -207,6 +299,7 @@ export class GameScene extends Phaser.Scene {
 
     if (event.key.length === 1 && /[a-zA-Z]/.test(event.key)) {
       this.typedInput += event.key.toLowerCase();
+      audioService.playKeypress();
       this.updateInputDisplay();
       this.checkWordMatch();
     }
@@ -283,6 +376,9 @@ export class GameScene extends Phaser.Scene {
     this.slowFactor = 1;
 
     this.showPowerFlash(powerColors[power]);
+    if (power !== 'none') {
+      audioService.playPowerActivate(power as 'fire' | 'ice' | 'wind' | 'slow');
+    }
 
     switch (power) {
       case 'fire':
@@ -350,6 +446,11 @@ export class GameScene extends Phaser.Scene {
     this.progressPct += PROGRESS_PCT_PER_WORD;
     if (this.progressPct > 100) this.progressPct = 100;
 
+    audioService.playWordComplete();
+    if (comboLevel) {
+      audioService.playCombo(this.combo);
+    }
+
     const wordCenterX = word.x + word.letters.reduce((sum, l) => sum + l.width, 0) / 2;
     const wordCenterY = word.y;
 
@@ -374,6 +475,7 @@ export class GameScene extends Phaser.Scene {
 
     if (this.progressPct >= 100 && this.gameState === 'playing') {
       this.gameState = 'levelComplete';
+      audioService.playLevelComplete();
     }
 
     this.events.emit('gameDataUpdate', this.getGameData());
@@ -591,10 +693,13 @@ export class GameScene extends Phaser.Scene {
         this.wordsMissed++;
         this.combo = 0;
         this.showMissedWordEffect(word);
+        audioService.playWordMissed();
         this.limitPct += LIMIT_PCT_PER_MISSED;
         if (this.limitPct >= 100) {
           this.limitPct = 100;
           this.gameState = 'gameOver';
+          audioService.playGameOver();
+          audioService.stopMusic();
         }
         toRemove.push(word);
       }
