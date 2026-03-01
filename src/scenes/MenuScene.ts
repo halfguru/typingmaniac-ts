@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FONT_FAMILY } from '../config/constants';
-import { storageService } from '../services/StorageService';
+import { authService, GlobalLeaderboardEntry } from '../services/AuthService';
 import { audioService } from '../services/AudioService';
 import { BackgroundRenderer } from '../services/BackgroundRenderer';
 import { themeService } from '../services/ThemeService';
@@ -9,6 +9,7 @@ export class MenuScene extends Phaser.Scene {
   private tutorialOverlay?: Phaser.GameObjects.Container;
   private leaderboardOverlay?: Phaser.GameObjects.Container;
   private fadeOverlay?: Phaser.GameObjects.Rectangle;
+  private leaderboardData: GlobalLeaderboardEntry[] = [];
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -16,51 +17,61 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     this.drawBackground();
+    this.preloadLeaderboard();
 
     const centerX = GAME_WIDTH / 2;
     const centerY = GAME_HEIGHT / 2;
 
     const titleContainer = this.add.graphics();
     titleContainer.fillStyle(themeService.getNumber('bg.sidebar'), 0.8);
-    titleContainer.fillRoundedRect(centerX - 350, centerY - 180, 700, 140, 20);
+    titleContainer.fillRoundedRect(centerX - 350, centerY - 220, 700, 160, 20);
     titleContainer.lineStyle(2, themeService.getNumber('ui.panelBorder'), 0.5);
-    titleContainer.strokeRoundedRect(centerX - 350, centerY - 180, 700, 140, 20);
+    titleContainer.strokeRoundedRect(centerX - 350, centerY - 220, 700, 160, 20);
 
-    const title = this.add.text(centerX, centerY - 120, 'TYPING MANIAC', {
+    const title = this.add.text(centerX, centerY - 160, 'TYPING MANIAC', {
       fontFamily: FONT_FAMILY,
-      fontSize: '80px',
+      fontSize: '72px',
       color: themeService.getText('text.primary'),
       fontStyle: 'bold',
     });
     title.setOrigin(0.5, 0.5);
     title.setShadow(4, 4, '#0a2a4a', 8, true, true);
 
-    const buttonW = 280;
-    const buttonH = 80;
-    const buttonX = centerX;
-    const buttonY = centerY + 50;
+    const user = authService.getUser();
+    if (user) {
+      const userText = this.add.text(centerX, centerY - 80, `Welcome, ${user.name}!`, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '22px',
+        color: themeService.getText('text.secondary'),
+      });
+      userText.setOrigin(0.5, 0.5);
+    }
 
-    const playButtonBg = this.add.graphics();
-    playButtonBg.fillStyle(themeService.getNumber('bg.sidebar'), 0.6);
-    playButtonBg.fillRoundedRect(buttonX - buttonW / 2 + 4, buttonY - buttonH / 2 + 4, buttonW, buttonH, 16);
+    const playButtonW = 320;
+    const playButtonH = 90;
+    const playButtonY = centerY + 30;
+
+    const playButtonShadow = this.add.graphics();
+    playButtonShadow.fillStyle(0x000000, 0.3);
+    playButtonShadow.fillRoundedRect(centerX - playButtonW / 2 + 4, playButtonY - playButtonH / 2 + 4, playButtonW, playButtonH, 16);
 
     const playButton = this.add.graphics();
     const drawPlayButton = (hover: boolean) => {
       playButton.clear();
-      playButton.fillStyle(hover ? themeService.getNumber('ui.buttonHover') : themeService.getNumber('ui.buttonBg'), 1);
-      playButton.fillRoundedRect(buttonX - buttonW / 2, buttonY - buttonH / 2, buttonW, buttonH, 16);
-      playButton.lineStyle(2, themeService.getNumber('ui.buttonBorder'), hover ? 1 : 0.6);
-      playButton.strokeRoundedRect(buttonX - buttonW / 2, buttonY - buttonH / 2, buttonW, buttonH, 16);
+      playButton.fillStyle(hover ? 0x5a9a5a : 0x4a8a4a, 1);
+      playButton.fillRoundedRect(centerX - playButtonW / 2, playButtonY - playButtonH / 2, playButtonW, playButtonH, 16);
+      playButton.lineStyle(3, hover ? 0x7aba7a : 0x6aaa6a, 1);
+      playButton.strokeRoundedRect(centerX - playButtonW / 2, playButtonY - playButtonH / 2, playButtonW, playButtonH, 16);
     };
     drawPlayButton(false);
 
-    const playHitArea = this.add.rectangle(buttonX, buttonY, buttonW, buttonH, 0x000000, 0);
+    const playHitArea = this.add.rectangle(centerX, playButtonY, playButtonW, playButtonH, 0x000000, 0);
     playHitArea.setInteractive({ useHandCursor: true });
 
-    const playText = this.add.text(buttonX, buttonY, '▶ PLAY', {
+    const playText = this.add.text(centerX, playButtonY, '▶  PLAY', {
       fontFamily: FONT_FAMILY,
-      fontSize: '40px',
-      color: themeService.getText('game.wordText'),
+      fontSize: '42px',
+      color: '#ffffff',
       fontStyle: 'bold',
     });
     playText.setOrigin(0.5, 0.5);
@@ -86,28 +97,48 @@ export class MenuScene extends Phaser.Scene {
       });
     });
 
-    const smallButtonY = centerY + 150;
-    const gap = 20;
-    const smallButtonW = 160;
-    const smallButtonH = 50;
-    const offset = smallButtonW / 2 + gap / 2;
+    const secondaryButtonW = 200;
+    const secondaryButtonH = 55;
+    const row1Y = centerY + 130;
+    const row2Y = centerY + 195;
+    const col1X = centerX - secondaryButtonW / 2 - 15;
+    const col2X = centerX + secondaryButtonW / 2 + 15;
 
-    this.createSmallButton(centerX - offset, smallButtonY, smallButtonW, smallButtonH, '📖 TUTORIAL', () => {
+    this.createSecondaryButton(col1X, row1Y, secondaryButtonW, secondaryButtonH, '📖 TUTORIAL', () => {
       audioService.playButtonClick();
       this.showTutorial();
     });
 
-    this.createSmallButton(centerX + offset, smallButtonY, smallButtonW, smallButtonH, '⚙️ SETTINGS', () => {
+    this.createSecondaryButton(col2X, row1Y, secondaryButtonW, secondaryButtonH, '🏆 SCORES', () => {
+      audioService.playButtonClick();
+      this.showLeaderboard();
+    });
+
+    this.createSecondaryButton(col1X, row2Y, secondaryButtonW, secondaryButtonH, '⚙️ SETTINGS', () => {
       audioService.playButtonClick();
       this.scene.pause();
       this.scene.launch('SettingsScene');
     });
 
-    const leaderboard = storageService.getLeaderboard();
-    if (leaderboard.length > 0) {
-      this.createSmallButton(centerX, smallButtonY + 65, smallButtonW, smallButtonH, '🏆 SCORES', () => {
+    if (user) {
+      const logoutText = this.add.text(col2X, row2Y, 'Sign Out', {
+        fontFamily: FONT_FAMILY,
+        fontSize: '18px',
+        color: themeService.getText('text.secondary'),
+      });
+      logoutText.setOrigin(0.5, 0.5);
+      logoutText.setInteractive({ useHandCursor: true });
+
+      logoutText.on('pointerover', () => {
+        logoutText.setColor('#ff6b6b');
+      });
+      logoutText.on('pointerout', () => {
+        logoutText.setColor(themeService.getText('text.secondary'));
+      });
+      logoutText.on('pointerdown', async () => {
         audioService.playButtonClick();
-        this.showLeaderboard();
+        await authService.signOut();
+        this.scene.start('AuthScene');
       });
     }
 
@@ -151,20 +182,24 @@ export class MenuScene extends Phaser.Scene {
     this.createFadeOverlay();
   }
 
-  createSmallButton(x: number, y: number, w: number, h: number, label: string, onClick: () => void) {
+  async preloadLeaderboard() {
+    this.leaderboardData = await authService.getLeaderboard(20);
+  }
+
+  createSecondaryButton(x: number, y: number, w: number, h: number, label: string, onClick: () => void) {
     const button = this.add.graphics();
     const drawButton = (hover: boolean) => {
       button.clear();
-      button.fillStyle(hover ? themeService.getNumber('ui.buttonHover') : themeService.getNumber('ui.buttonBg'), 1);
-      button.fillRoundedRect(x - w / 2, y - h / 2, w, h, 10);
-      button.lineStyle(2, themeService.getNumber('ui.buttonBorder'), hover ? 0.8 : 0.5);
-      button.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 10);
+      button.fillStyle(hover ? themeService.getNumber('ui.buttonHover') : themeService.getNumber('bg.sidebar'), 1);
+      button.fillRoundedRect(x - w / 2, y - h / 2, w, h, 12);
+      button.lineStyle(2, themeService.getNumber('ui.panelBorder'), hover ? 0.9 : 0.4);
+      button.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 12);
     };
     drawButton(false);
 
     const text = this.add.text(x, y, label, {
       fontFamily: FONT_FAMILY,
-      fontSize: '20px',
+      fontSize: '18px',
       color: themeService.getText('game.wordText'),
       fontStyle: 'bold',
     });
@@ -219,8 +254,8 @@ export class MenuScene extends Phaser.Scene {
     const bg = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85);
     this.tutorialOverlay.add(bg);
 
-    const panelW = 700;
-    const panelH = 600;
+    const panelW = 750;
+    const panelH = 620;
     const panelX = GAME_WIDTH / 2 - panelW / 2;
     const panelY = GAME_HEIGHT / 2 - panelH / 2;
 
@@ -233,50 +268,209 @@ export class MenuScene extends Phaser.Scene {
     }
     this.tutorialOverlay.add(panel);
 
-    const title = this.add.text(GAME_WIDTH / 2, panelY + 40, 'HOW TO PLAY', {
+    const title = this.add.text(GAME_WIDTH / 2, panelY + 35, '📖 HOW TO PLAY', {
       fontFamily: FONT_FAMILY,
-      fontSize: '42px',
+      fontSize: '36px',
       color: themeService.getText('text.primary'),
       fontStyle: 'bold',
     });
     title.setOrigin(0.5, 0.5);
     this.tutorialOverlay.add(title);
 
-    const instructions = [
-      { icon: '⌨️', text: 'Type the falling words before they hit the bottom' },
-      { icon: '🎯', text: 'Matched letters turn GREEN, active word turns BLUE' },
-      { icon: '🔥', text: 'FIRE: Destroys all words on screen' },
-      { icon: '❄️', text: 'ICE: Freezes all words for 5 seconds' },
-      { icon: '💨', text: 'WIND: Resets the LIMIT bar to zero' },
-      { icon: '⏱️', text: 'SLOW: Slows words to 30% speed for 5 seconds' },
-      { icon: '📊', text: 'PROGRESS fills when you complete words' },
-      { icon: '⚠️', text: 'LIMIT fills when you miss words - game over at 100%!' },
-      { icon: '✨', text: 'Build combos for bonus points!' },
+    const section1Y = panelY + 85;
+    const section1Header = this.add.text(panelX + 25, section1Y, '⌨️ BASICS', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '18px',
+      color: '#4fc3f7',
+      fontStyle: 'bold',
+    });
+    this.tutorialOverlay.add(section1Header);
+
+    const section1Bg = this.add.graphics();
+    section1Bg.fillStyle(0x4fc3f7, 0.08);
+    section1Bg.fillRoundedRect(panelX + 20, section1Y + 25, panelW - 40, 75, 10);
+    this.tutorialOverlay.add(section1Bg);
+
+    const basics = [
+      'Type falling words before they hit the red zone',
+      'Press ENTER to submit • Wrong submission speeds up the word!',
     ];
 
-    let y = panelY + 100;
-    for (const instruction of instructions) {
-      const iconText = this.add.text(panelX + 40, y, instruction.icon, {
+    let y = section1Y + 45;
+    for (const item of basics) {
+      const bullet = this.add.text(panelX + 35, y, '•', {
         fontFamily: FONT_FAMILY,
-        fontSize: '28px',
+        fontSize: '16px',
+        color: '#4fc3f7',
       });
-      iconText.setOrigin(0, 0.5);
-      this.tutorialOverlay.add(iconText);
+      bullet.setOrigin(0, 0.5);
+      this.tutorialOverlay.add(bullet);
 
-      const text = this.add.text(panelX + 90, y, instruction.text, {
+      const text = this.add.text(panelX + 50, y, item, {
         fontFamily: FONT_FAMILY,
-        fontSize: '22px',
+        fontSize: '16px',
         color: themeService.getText('game.wordText'),
       });
       text.setOrigin(0, 0.5);
       this.tutorialOverlay.add(text);
-
-      y += 50;
+      y += 28;
     }
 
-    const closeText = this.add.text(GAME_WIDTH / 2, panelY + panelH - 40, 'Press ESC or click to close', {
+    const section2Y = panelY + 195;
+    const section2Header = this.add.text(panelX + 25, section2Y, '⚡ POWER-UPS', {
       fontFamily: FONT_FAMILY,
-      fontSize: '20px',
+      fontSize: '18px',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    });
+    this.tutorialOverlay.add(section2Header);
+
+    const powers = [
+      { icon: '🔥', name: 'FIRE', key: '1', desc: 'Destroy all words on screen', color: '#ff6b35' },
+      { icon: '❄️', name: 'ICE', key: '2', desc: 'Freeze all words for 5 seconds', color: '#64b5f6' },
+      { icon: '💨', name: 'WIND', key: '3', desc: 'Reset LIMIT bar to 0%', color: '#ba68c8' },
+      { icon: '🐌', name: 'SLOW', key: '4', desc: 'Slow words to 30% for 5 seconds', color: '#ffb74d' },
+    ];
+
+    y = section2Y + 30;
+    for (const power of powers) {
+      const powerBg = this.add.graphics();
+      powerBg.fillStyle(themeService.getNumber('ui.panelBorder'), 0.1);
+      powerBg.fillRoundedRect(panelX + 25, y - 15, panelW - 50, 35, 8);
+      this.tutorialOverlay.add(powerBg);
+
+      const iconText = this.add.text(panelX + 40, y, power.icon, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '24px',
+      });
+      iconText.setOrigin(0, 0.5);
+      this.tutorialOverlay.add(iconText);
+
+      const nameText = this.add.text(panelX + 80, y, power.name, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '18px',
+        color: power.color,
+        fontStyle: 'bold',
+      });
+      nameText.setOrigin(0, 0.5);
+      this.tutorialOverlay.add(nameText);
+
+      const keyBg = this.add.graphics();
+      keyBg.fillStyle(0x333333, 1);
+      keyBg.fillRoundedRect(panelX + 160, y - 12, 30, 24, 4);
+      this.tutorialOverlay.add(keyBg);
+
+      const keyText = this.add.text(panelX + 175, y, power.key, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '14px',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      });
+      keyText.setOrigin(0.5, 0.5);
+      this.tutorialOverlay.add(keyText);
+
+      const descText = this.add.text(panelX + 205, y, power.desc, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '16px',
+        color: themeService.getText('text.secondary'),
+      });
+      descText.setOrigin(0, 0.5);
+      this.tutorialOverlay.add(descText);
+
+      y += 42;
+    }
+
+    const section3Y = panelY + 410;
+    const section3Header = this.add.text(panelX + 25, section3Y, '🎯 OBJECTIVES', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '18px',
+      color: '#2ecc71',
+      fontStyle: 'bold',
+    });
+    this.tutorialOverlay.add(section3Header);
+
+    const section3Bg = this.add.graphics();
+    section3Bg.fillStyle(0x2ecc71, 0.08);
+    section3Bg.fillRoundedRect(panelX + 20, section3Y + 25, (panelW - 50) / 2, 75, 10);
+    this.tutorialOverlay.add(section3Bg);
+
+    const progressIcon = this.add.text(panelX + 40, section3Y + 55, '📊', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '28px',
+    });
+    progressIcon.setOrigin(0, 0.5);
+    this.tutorialOverlay.add(progressIcon);
+
+    const progressTitle = this.add.text(panelX + 80, section3Y + 45, 'PROGRESS', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '16px',
+      color: '#2ecc71',
+      fontStyle: 'bold',
+    });
+    progressTitle.setOrigin(0, 0.5);
+    this.tutorialOverlay.add(progressTitle);
+
+    const progressDesc = this.add.text(panelX + 80, section3Y + 70, 'Fill to 100% to level up!', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: themeService.getText('text.secondary'),
+    });
+    progressDesc.setOrigin(0, 0.5);
+    this.tutorialOverlay.add(progressDesc);
+
+    const section3Bg2 = this.add.graphics();
+    section3Bg2.fillStyle(0xff4444, 0.08);
+    section3Bg2.fillRoundedRect(panelX + 25 + (panelW - 50) / 2 + 10, section3Y + 25, (panelW - 50) / 2, 75, 10);
+    this.tutorialOverlay.add(section3Bg2);
+
+    const limitIcon = this.add.text(panelX + 45 + (panelW - 50) / 2 + 10, section3Y + 55, '⚠️', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '28px',
+    });
+    limitIcon.setOrigin(0, 0.5);
+    this.tutorialOverlay.add(limitIcon);
+
+    const limitTitle = this.add.text(panelX + 85 + (panelW - 50) / 2 + 10, section3Y + 45, 'LIMIT', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '16px',
+      color: '#ff4444',
+      fontStyle: 'bold',
+    });
+    limitTitle.setOrigin(0, 0.5);
+    this.tutorialOverlay.add(limitTitle);
+
+    const limitDesc = this.add.text(panelX + 85 + (panelW - 50) / 2 + 10, section3Y + 70, '100% = GAME OVER!', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: themeService.getText('text.secondary'),
+    });
+    limitDesc.setOrigin(0, 0.5);
+    this.tutorialOverlay.add(limitDesc);
+
+    const comboBg = this.add.graphics();
+    comboBg.fillStyle(0xffd700, 0.08);
+    comboBg.fillRoundedRect(panelX + 20, panelY + 525, panelW - 40, 40, 10);
+    this.tutorialOverlay.add(comboBg);
+
+    const comboIcon = this.add.text(GAME_WIDTH / 2 - 180, panelY + 545, '✨', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '24px',
+    });
+    comboIcon.setOrigin(0, 0.5);
+    this.tutorialOverlay.add(comboIcon);
+
+    const comboText = this.add.text(GAME_WIDTH / 2 - 150, panelY + 545, 'COMBOS: 9+ words = GOOD (1.2x) → 36+ words = FANTASTIC (3x)', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '16px',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    });
+    comboText.setOrigin(0, 0.5);
+    this.tutorialOverlay.add(comboText);
+
+    const closeText = this.add.text(GAME_WIDTH / 2, panelY + panelH - 30, 'Press ESC or click anywhere to close', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '16px',
       color: themeService.getText('text.secondary'),
     });
     closeText.setOrigin(0.5, 0.5);
@@ -309,8 +503,10 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
-  showLeaderboard() {
+  async showLeaderboard() {
     if (this.leaderboardOverlay) return;
+
+    this.leaderboardData = await authService.getLeaderboard(20);
 
     this.leaderboardOverlay = this.add.container(0, 0);
     this.leaderboardOverlay.setDepth(500);
@@ -318,8 +514,8 @@ export class MenuScene extends Phaser.Scene {
     const bg = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85);
     this.leaderboardOverlay.add(bg);
 
-    const panelW = 500;
-    const panelH = 450;
+    const panelW = 700;
+    const panelH = 580;
     const panelX = GAME_WIDTH / 2 - panelW / 2;
     const panelY = GAME_HEIGHT / 2 - panelH / 2;
 
@@ -332,54 +528,157 @@ export class MenuScene extends Phaser.Scene {
     }
     this.leaderboardOverlay.add(panel);
 
-    const title = this.add.text(GAME_WIDTH / 2, panelY + 40, '🏆 HIGH SCORES 🏆', {
+    const title = this.add.text(GAME_WIDTH / 2, panelY + 35, '🏆 GLOBAL LEADERBOARD 🏆', {
       fontFamily: FONT_FAMILY,
-      fontSize: '38px',
+      fontSize: '32px',
       color: '#ffd700',
       fontStyle: 'bold',
     });
     title.setOrigin(0.5, 0.5);
     this.leaderboardOverlay.add(title);
 
-    const leaderboard = storageService.getLeaderboard();
-    let y = panelY + 100;
+    const headerY = panelY + 85;
+    const headerBg = this.add.graphics();
+    headerBg.fillStyle(0xffd700, 0.1);
+    headerBg.fillRoundedRect(panelX + 15, headerY - 15, panelW - 30, 35, 8);
+    this.leaderboardOverlay.add(headerBg);
 
-    if (leaderboard.length === 0) {
-      const noScores = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'No scores yet!', {
+    const rankHeader = this.add.text(panelX + 45, headerY, 'RANK', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    });
+    rankHeader.setOrigin(0.5, 0.5);
+    this.leaderboardOverlay.add(rankHeader);
+
+    const playerHeader = this.add.text(panelX + 140, headerY, 'PLAYER', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    });
+    playerHeader.setOrigin(0, 0.5);
+    this.leaderboardOverlay.add(playerHeader);
+
+    const scoreHeader = this.add.text(panelX + panelW - 140, headerY, 'SCORE', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    });
+    scoreHeader.setOrigin(0.5, 0.5);
+    this.leaderboardOverlay.add(scoreHeader);
+
+    const levelHeader = this.add.text(panelX + panelW - 50, headerY, 'LVL', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    });
+    levelHeader.setOrigin(0.5, 0.5);
+    this.leaderboardOverlay.add(levelHeader);
+
+    const divider = this.add.graphics();
+    divider.lineStyle(1, 0xffd700, 0.3);
+    divider.lineBetween(panelX + 20, headerY + 20, panelX + panelW - 20, headerY + 20);
+    this.leaderboardOverlay.add(divider);
+
+    if (this.leaderboardData.length === 0) {
+      const noScores = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'No scores yet! Be the first!', {
         fontFamily: FONT_FAMILY,
-        fontSize: '28px',
+        fontSize: '24px',
         color: themeService.getText('text.secondary'),
       });
       noScores.setOrigin(0.5, 0.5);
       this.leaderboardOverlay.add(noScores);
     } else {
-      const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
-      for (let i = 0; i < leaderboard.length; i++) {
-        const entry = leaderboard[i];
-        const row = this.add.text(panelX + 40, y, `${medals[i]}  ${this.formatNumber(entry.score)}  Lvl ${entry.level}`, {
-          fontFamily: FONT_FAMILY,
-          fontSize: '28px',
-          color: i === 0 ? '#ffd700' : themeService.getText('game.wordText'),
-          fontStyle: i === 0 ? 'bold' : 'normal',
-        });
-        row.setOrigin(0, 0.5);
-        this.leaderboardOverlay.add(row);
+      const medals = ['🥇', '🥈', '🥉'];
+      const displayCount = Math.min(this.leaderboardData.length, 10);
+      const avatarSize = 32;
+      const rowStartY = panelY + 130;
+      const rowHeight = 42;
 
-        const date = this.add.text(panelX + panelW - 40, y, entry.date, {
+      for (let i = 0; i < displayCount; i++) {
+        const entry = this.leaderboardData[i];
+        const currentY = rowStartY + i * rowHeight;
+
+        if (i % 2 === 1) {
+          const rowBg = this.add.graphics();
+          rowBg.fillStyle(themeService.getNumber('ui.panelBorder'), 0.05);
+          rowBg.fillRoundedRect(panelX + 15, currentY - 18, panelW - 30, 36, 6);
+          this.leaderboardOverlay.add(rowBg);
+        }
+
+        const rankText = i < 3 ? medals[i] : `${i + 1}`;
+        const rankLabel = this.add.text(panelX + 45, currentY, rankText, {
+          fontFamily: FONT_FAMILY,
+          fontSize: i < 3 ? '24px' : '18px',
+          color: i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : themeService.getText('text.secondary'),
+          fontStyle: i < 3 ? 'bold' : 'normal',
+        });
+        rankLabel.setOrigin(0.5, 0.5);
+        this.leaderboardOverlay.add(rankLabel);
+
+        const avatarX = panelX + 90;
+        const avatarBg = this.add.circle(avatarX, currentY, avatarSize / 2 + 2, themeService.getNumber('ui.panelBorder'), 0.5);
+        this.leaderboardOverlay.add(avatarBg);
+
+        if (entry.avatar_url && this.textures.exists(`avatar_${entry.user_id}`)) {
+          const avatar = this.add.image(avatarX, currentY, `avatar_${entry.user_id}`);
+          avatar.setDisplaySize(avatarSize, avatarSize);
+          
+          const maskGraphics = this.make.graphics({});
+          maskGraphics.fillStyle(0xffffff);
+          maskGraphics.fillCircle(avatarX, currentY, avatarSize / 2);
+          const mask = maskGraphics.createGeometryMask();
+          avatar.setMask(mask);
+          
+          this.leaderboardOverlay.add(avatar);
+        } else {
+          const initial = entry.username.charAt(0).toUpperCase();
+          const initialText = this.add.text(avatarX, currentY, initial, {
+            fontFamily: FONT_FAMILY,
+            fontSize: '16px',
+            color: themeService.getText('text.primary'),
+            fontStyle: 'bold',
+          });
+          initialText.setOrigin(0.5, 0.5);
+          this.leaderboardOverlay.add(initialText);
+        }
+
+        const username = entry.username.length > 14 ? entry.username.substring(0, 14) + '…' : entry.username;
+        const nameLabel = this.add.text(panelX + 115, currentY, username, {
           fontFamily: FONT_FAMILY,
           fontSize: '20px',
+          color: i < 3 ? themeService.getText('text.primary') : themeService.getText('game.wordText'),
+          fontStyle: i < 3 ? 'bold' : 'normal',
+        });
+        nameLabel.setOrigin(0, 0.5);
+        this.leaderboardOverlay.add(nameLabel);
+
+        const scoreLabel = this.add.text(panelX + panelW - 140, currentY, this.formatNumber(entry.score), {
+          fontFamily: FONT_FAMILY,
+          fontSize: '20px',
+          color: i === 0 ? '#ffd700' : themeService.getText('text.primary'),
+          fontStyle: 'bold',
+        });
+        scoreLabel.setOrigin(0.5, 0.5);
+        this.leaderboardOverlay.add(scoreLabel);
+
+        const levelLabel = this.add.text(panelX + panelW - 50, currentY, `${entry.level}`, {
+          fontFamily: FONT_FAMILY,
+          fontSize: '18px',
           color: themeService.getText('text.secondary'),
         });
-        date.setOrigin(1, 0.5);
-        this.leaderboardOverlay.add(date);
-
-        y += 55;
+        levelLabel.setOrigin(0.5, 0.5);
+        this.leaderboardOverlay.add(levelLabel);
       }
     }
 
-    const closeText = this.add.text(GAME_WIDTH / 2, panelY + panelH - 40, 'Press ESC or click to close', {
+    const closeText = this.add.text(GAME_WIDTH / 2, panelY + panelH - 35, 'Press ESC or click anywhere to close', {
       fontFamily: FONT_FAMILY,
-      fontSize: '20px',
+      fontSize: '16px',
       color: themeService.getText('text.secondary'),
     });
     closeText.setOrigin(0.5, 0.5);
@@ -449,8 +748,6 @@ export class MenuScene extends Phaser.Scene {
   }
 
   formatNumber(n: number): string {
-    let s = n.toString();
-    while (s.length < 4) s = '0' + s;
-    return s;
+    return n.toLocaleString();
   }
 }

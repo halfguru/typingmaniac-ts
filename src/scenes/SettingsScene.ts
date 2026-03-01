@@ -14,6 +14,7 @@ export class SettingsScene extends Phaser.Scene {
     valueText: Phaser.GameObjects.Text;
     trackX: number;
     trackW: number;
+    trackY: number;
   }[] = [];
 
   constructor() {
@@ -25,8 +26,8 @@ export class SettingsScene extends Phaser.Scene {
 
     const centerX = GAME_WIDTH / 2;
     const centerY = GAME_HEIGHT / 2;
-    const panelW = 480;
-    const panelH = 460;
+    const panelW = 520;
+    const panelH = 420;
 
     const panel = this.add.graphics();
     panel.fillStyle(themeService.getNumber('bg.sidebar'), 1);
@@ -36,37 +37,46 @@ export class SettingsScene extends Phaser.Scene {
       panel.lineStyle(2 - i * 0.5, themeService.getNumber('ui.panelBorder'), 0.4 - i * 0.1);
       panel.strokeRoundedRect(centerX - panelW / 2 + i, centerY - panelH / 2 + i, panelW - i * 2, panelH - i * 2, 20 - i);
     }
-    
-    const panelGlow = this.add.graphics();
-    panelGlow.fillStyle(themeService.getNumber('ui.panelBorder'), 0.03);
-    panelGlow.fillRoundedRect(centerX - panelW / 2 + 10, centerY - panelH / 2 + 10, panelW - 20, panelH - 20, 15);
-    this.tweens.add({
-      targets: panelGlow,
-      alpha: { from: 1, to: 0.5 },
-      duration: 2000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
 
-    const title = this.add.text(centerX, centerY - 190, 'SETTINGS', {
+    const title = this.add.text(centerX, centerY - 170, '⚙️ SETTINGS', {
       fontFamily: FONT_FAMILY,
-      fontSize: '48px',
+      fontSize: '36px',
       color: themeService.getText('text.primary'),
       fontStyle: 'bold',
     });
     title.setOrigin(0.5, 0.5);
-    title.setShadow(0, 0, themeService.getText('text.glow'), 12, true, true);
+
+    const audioHeader = this.add.text(centerX, centerY - 120, '🔊 AUDIO', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '16px',
+      color: '#4fc3f7',
+      fontStyle: 'bold',
+    });
+    audioHeader.setOrigin(0.5, 0.5);
+
+    const headerLine = this.add.graphics();
+    headerLine.lineStyle(1, 0x4fc3f7, 0.3);
+    headerLine.lineBetween(centerX - 200, centerY - 100, centerX + 200, centerY - 100);
   
     const settings = audioService.getSettings();
   
-    this.createSlider(centerX, centerY - 90, 'MASTER', settings.masterVolume, 'master');
-    this.createSlider(centerX, centerY - 15, 'SOUND EFFECTS', settings.sfxVolume, 'sfx');
-    this.createSlider(centerX, centerY + 60, 'MUSIC', settings.musicVolume, 'music');
-  
-    this.createMuteButton(centerX, centerY + 140, settings.muted);
-   
-    this.createBackButton(centerX, centerY + 200);
+    this.createSlider(centerX, centerY - 65, 'MASTER', settings.masterVolume, 'master');
+    this.createSlider(centerX, centerY + 5, 'EFFECTS', settings.sfxVolume, 'sfx');
+    this.createSlider(centerX, centerY + 75, 'MUSIC', settings.musicVolume, 'music');
+
+    this.createMuteButton(centerX, centerY + 145);
+
+    const closeText = this.add.text(centerX, centerY + panelH / 2 - 25, 'Press ESC or click anywhere to close', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: themeService.getText('text.secondary'),
+    });
+    closeText.setOrigin(0.5, 0.5);
+
+    const bg = this.add.rectangle(centerX, centerY, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0);
+    bg.setInteractive({ useHandCursor: true });
+    bg.on('pointerdown', () => this.goBack());
+    bg.setDepth(-1);
   
     this.input.keyboard!.on('keydown-ESC', () => this.goBack());
     this.input.keyboard!.on('keydown-BACKSPACE', () => this.goBack());
@@ -80,42 +90,43 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   createSlider(x: number, y: number, label: string, value: number, type: 'master' | 'sfx' | 'music') {
-    const labelText = this.add.text(x - 210, y - 18, label, {
+    const labelText = this.add.text(x - 180, y, label, {
       fontFamily: FONT_FAMILY,
       fontSize: '16px',
-      color: themeService.getText('text.secondary'),
+      color: themeService.getText('text.primary'),
+      fontStyle: 'bold',
     });
     labelText.setOrigin(0, 0.5);
 
-    const trackW = 200;
+    const trackW = 220;
     const trackH = 10;
-    const trackX = x - 100;
-    const trackY = y + 8;
+    const trackX = x + 20;
+    const trackY = y;
 
-    const track = this.add.graphics();
-    track.fillStyle(themeService.getNumber('bg.slot'), 1);
-    track.fillRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW, trackH, 5);
-    track.lineStyle(1, themeService.getNumber('ui.panelBorder'), 0.3);
-    track.strokeRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW, trackH, 5);
-  
+    const trackBg = this.add.graphics();
+    trackBg.fillStyle(themeService.getNumber('bg.slot'), 1);
+    trackBg.fillRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW, trackH, 5);
+    trackBg.lineStyle(1, themeService.getNumber('ui.panelBorder'), 0.3);
+    trackBg.strokeRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW, trackH, 5);
+
     const fill = this.add.graphics();
     const fillW = trackW * value;
     fill.fillStyle(themeService.getNumber('ui.panelBorder'), 1);
     fill.fillRoundedRect(trackX - trackW / 2, trackY - trackH / 2, fillW, trackH, 5);
-  
+
     const handleX = trackX - trackW / 2 + trackW * value;
-    const handle = this.add.circle(handleX, trackY, 12, themeService.getNumber('ui.panelBorder'), 1);
-    handle.setStrokeStyle(2, themeService.getNumber('effects.glow'), 0.9);
-  
-    const valueText = this.add.text(x + 110, y, `${Math.round(value * 100)}%`, {
+    const handle = this.add.circle(handleX, trackY, 12, 0xffffff, 1);
+    handle.setStrokeStyle(2, themeService.getNumber('ui.panelBorder'), 1);
+
+    const valueText = this.add.text(trackX + trackW / 2 + 20, trackY, `${Math.round(value * 100)}%`, {
       fontFamily: FONT_FAMILY,
-      fontSize: '16px',
+      fontSize: '18px',
       color: themeService.getText('text.primary'),
+      fontStyle: 'bold',
     });
-    valueText.setOrigin(0.5, 0.5);
-    valueText.setShadow(0, 0, themeService.getText('text.glow'), 6, true, true);
+    valueText.setOrigin(0, 0.5);
   
-    const sliderData = { track, fill, handle, value, type, valueText, trackX, trackW };
+    const sliderData = { track: trackBg, fill, handle, value, type, valueText, trackX, trackW, trackY };
     this.sliders.push(sliderData);
   
     const hitArea = this.add.rectangle(trackX, trackY, trackW + 40, 40, 0x000000, 0);
@@ -128,8 +139,8 @@ export class SettingsScene extends Phaser.Scene {
       sliderData.value = newValue;
       fill.clear();
       fill.fillStyle(themeService.getNumber('ui.panelBorder'), 1);
-      fill.fillRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW * newValue, trackH, 6);
-  
+      fill.fillRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW * newValue, trackH, 5);
+
       handle.setPosition(trackX - trackW / 2 + trackW * newValue, trackY);
       valueText.setText(`${Math.round(newValue * 100)}%`);
   
@@ -155,25 +166,30 @@ export class SettingsScene extends Phaser.Scene {
     });
   }
 
-  createMuteButton(x: number, y: number, muted: boolean) {
+  createMuteButton(x: number, y: number) {
     const buttonW = 180;
     const buttonH = 44;
+    const muted = audioService.getSettings().muted;
 
     const button = this.add.graphics();
-    const drawButton = (isMuted: boolean) => {
+    const drawButton = (isMuted: boolean, hover: boolean) => {
       button.clear();
-      button.fillStyle(isMuted ? 0x3a1520 : themeService.getNumber('ui.buttonBg'), 1);
+      if (isMuted) {
+        button.fillStyle(0x4a1a1a, 1);
+      } else {
+        button.fillStyle(hover ? themeService.getNumber('ui.buttonHover') : themeService.getNumber('ui.buttonBg'), 1);
+      }
       button.fillRoundedRect(x - buttonW / 2, y - buttonH / 2, buttonW, buttonH, 10);
-      button.lineStyle(2, isMuted ? themeService.getNumber('accent.danger') : themeService.getNumber('ui.buttonBorder'), 0.7);
+      button.lineStyle(2, isMuted ? themeService.getNumber('accent.danger') : themeService.getNumber('ui.buttonBorder'), isMuted ? 1 : (hover ? 0.9 : 0.5));
       button.strokeRoundedRect(x - buttonW / 2, y - buttonH / 2, buttonW, buttonH, 10);
     };
-    drawButton(muted);
+    drawButton(muted, false);
 
     const icon = muted ? '🔇' : '🔊';
-    const text = this.add.text(x, y, `${icon} ${muted ? 'MUTED' : 'SOUND ON'}`, {
+    const text = this.add.text(x, y, `${icon} ${muted ? 'UNMUTE' : 'MUTE ALL'}`, {
       fontFamily: FONT_FAMILY,
-      fontSize: '18px',
-      color: themeService.getText('game.wordText'),
+      fontSize: '16px',
+      color: muted ? '#ff6b6b' : themeService.getText('game.wordText'),
       fontStyle: 'bold',
     });
     text.setOrigin(0.5, 0.5);
@@ -182,43 +198,13 @@ export class SettingsScene extends Phaser.Scene {
     hitArea.setInteractive({ useHandCursor: true });
 
     let currentMuted = muted;
+    hitArea.on('pointerover', () => drawButton(currentMuted, true));
+    hitArea.on('pointerout', () => drawButton(currentMuted, false));
     hitArea.on('pointerdown', () => {
       currentMuted = audioService.toggleMute();
-      drawButton(currentMuted);
-      text.setText(`${currentMuted ? '🔇' : '🔊'} ${currentMuted ? 'MUTED' : 'SOUND ON'}`);
-    });
-  }
-
-  createBackButton(x: number, y: number) {
-    const buttonW = 160;
-    const buttonH = 44;
-
-    const button = this.add.graphics();
-    const drawButton = (hover: boolean) => {
-      button.clear();
-      button.fillStyle(hover ? themeService.getNumber('ui.buttonHover') : themeService.getNumber('ui.buttonBg'), 1);
-      button.fillRoundedRect(x - buttonW / 2, y - buttonH / 2, buttonW, buttonH, 10);
-      button.lineStyle(2, themeService.getNumber('ui.buttonBorder'), hover ? 0.9 : 0.5);
-      button.strokeRoundedRect(x - buttonW / 2, y - buttonH / 2, buttonW, buttonH, 10);
-    };
-    drawButton(false);
-
-    const text = this.add.text(x, y, '← BACK', {
-      fontFamily: FONT_FAMILY,
-      fontSize: '20px',
-      color: themeService.getText('game.wordText'),
-      fontStyle: 'bold',
-    });
-    text.setOrigin(0.5, 0.5);
-
-    const hitArea = this.add.rectangle(x, y, buttonW, buttonH, 0x000000, 0);
-    hitArea.setInteractive({ useHandCursor: true });
-
-    hitArea.on('pointerover', () => drawButton(true));
-    hitArea.on('pointerout', () => drawButton(false));
-    hitArea.on('pointerdown', () => {
-      audioService.playButtonClick();
-      this.goBack();
+      drawButton(currentMuted, true);
+      text.setText(`${currentMuted ? '🔇' : '🔊'} ${currentMuted ? 'UNMUTE' : 'MUTE ALL'}`);
+      text.setColor(currentMuted ? '#ff6b6b' : themeService.getText('game.wordText'));
     });
   }
 
