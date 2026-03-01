@@ -138,21 +138,45 @@ export class MenuScene extends Phaser.Scene {
     });
 
     if (user) {
-      const logoutText = this.add.text(centerX, startY + (secondaryButtonH + buttonSpacing) * 3 + 20, 'Sign Out', {
+      const logoutY = startY + (secondaryButtonH + buttonSpacing) * 3 + 15;
+      const logoutW = 140;
+      const logoutH = 36;
+
+      const logoutBg = this.add.graphics();
+      logoutBg.fillStyle(themeService.getNumber('bg.slot'), 1);
+      logoutBg.fillRoundedRect(centerX - logoutW / 2, logoutY - logoutH / 2, logoutW, logoutH, 8);
+      logoutBg.lineStyle(1, themeService.getNumber('accent.danger'), 0.5);
+      logoutBg.strokeRoundedRect(centerX - logoutW / 2, logoutY - logoutH / 2, logoutW, logoutH, 8);
+
+      const logoutText = this.add.text(centerX, logoutY, '🚪 Sign Out', {
         fontFamily: FONT_FAMILY,
-        fontSize: '16px',
+        fontSize: '18px',
         color: themeService.getText('text.secondary'),
       });
       logoutText.setOrigin(0.5, 0.5);
-      logoutText.setInteractive({ useHandCursor: true });
 
-      logoutText.on('pointerover', () => {
+      const logoutHitArea = this.add.rectangle(centerX, logoutY, logoutW, logoutH, 0x000000, 0);
+      logoutHitArea.setInteractive({ useHandCursor: true });
+
+      logoutHitArea.on('pointerover', () => {
+        logoutBg.clear();
+        logoutBg.fillStyle(themeService.getNumber('accent.danger'), 0.2);
+        logoutBg.fillRoundedRect(centerX - logoutW / 2, logoutY - logoutH / 2, logoutW, logoutH, 8);
+        logoutBg.lineStyle(2, themeService.getNumber('accent.danger'), 0.8);
+        logoutBg.strokeRoundedRect(centerX - logoutW / 2, logoutY - logoutH / 2, logoutW, logoutH, 8);
         logoutText.setColor('#ff6b6b');
       });
-      logoutText.on('pointerout', () => {
+
+      logoutHitArea.on('pointerout', () => {
+        logoutBg.clear();
+        logoutBg.fillStyle(themeService.getNumber('bg.slot'), 1);
+        logoutBg.fillRoundedRect(centerX - logoutW / 2, logoutY - logoutH / 2, logoutW, logoutH, 8);
+        logoutBg.lineStyle(1, themeService.getNumber('accent.danger'), 0.5);
+        logoutBg.strokeRoundedRect(centerX - logoutW / 2, logoutY - logoutH / 2, logoutW, logoutH, 8);
         logoutText.setColor(themeService.getText('text.secondary'));
       });
-      logoutText.on('pointerdown', async () => {
+
+      logoutHitArea.on('pointerdown', async () => {
         audioService.playButtonClick();
         await authService.signOut();
         this.scene.start('AuthScene');
