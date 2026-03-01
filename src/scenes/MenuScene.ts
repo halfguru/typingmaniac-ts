@@ -39,6 +39,14 @@ export class MenuScene extends Phaser.Scene {
     title.setOrigin(0.5, 0.5);
     title.setShadow(4, 4, '#0a2a4a', 8, true, true);
 
+    const version = this.add.text(GAME_WIDTH - 15, GAME_HEIGHT - 15, 'v1.1.0', {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: themeService.getText('text.secondary'),
+    });
+    version.setOrigin(1, 1);
+    version.setAlpha(0.6);
+
     const user = authService.getUser();
     if (user) {
       const userText = this.add.text(centerX, centerY - 80, `Welcome, ${user.name}!`, {

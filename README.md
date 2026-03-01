@@ -111,6 +111,12 @@ VITE_APP_VERSION=1.0.0
 
 ---
 
+## 📝 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
+
+---
+
 ## 📜 License
 
 [MIT](LICENSE) © 2025 halfguru
