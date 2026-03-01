@@ -145,7 +145,7 @@ export class ProgressBar extends Phaser.GameObjects.Container {
 
     const label = scene.add.text(x, y, config.label ?? '', {
       fontFamily: FONT_FAMILY,
-      fontSize: '14px',
+      fontSize: config.style === 'elaborate' ? '20px' : '14px',
       color: `#${glowColor.toString(16).padStart(6, '0')}`,
       fontStyle: 'bold',
     });

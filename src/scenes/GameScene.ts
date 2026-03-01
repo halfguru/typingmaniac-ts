@@ -5,6 +5,8 @@ import { audioService } from '../services/AudioService';
 import { BackgroundRenderer } from '../services/BackgroundRenderer';
 import { GameConfigService } from '../services/GameConfigService';
 import { EffectManager } from '../managers/EffectManager';
+import { themeService } from '../services/ThemeService';
+import { WizardRenderer } from '../services/WizardRenderer';
 import {
   GAME_AREA_WIDTH,
   GAME_HEIGHT,
@@ -41,12 +43,15 @@ export class GameScene extends Phaser.Scene {
   gameState: GState = 'playing';
   spawnTimer = 0;
   slowFactor = 1;
-  powerTimer = 0;
-  activePower: PowerType = 'none';
+  iceActive = false;
+  iceTimer = 0;
+  slowActive = false;
+  slowTimer = 0;
   inputText!: Phaser.GameObjects.Text;
   combo = 0;
   private levelStartScore = 0;
   private effects!: EffectManager;
+  private wizard!: WizardRenderer;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -56,11 +61,16 @@ export class GameScene extends Phaser.Scene {
     this.effects = new EffectManager(this);
     this.drawBackground();
     this.drawDangerZone();
+    this.createWizard();
     this.drawInputArea();
     this.effects.createFadeOverlay();
     this.input.keyboard!.on('keydown', this.handleKeyDown, this);
     this.scene.launch('UIScene');
     this.events.emit('gameDataUpdate', this.getGameData());
+  }
+
+  createWizard() {
+    this.wizard = new WizardRenderer(this);
   }
 
   drawBackground() {
@@ -102,7 +112,7 @@ export class GameScene extends Phaser.Scene {
     const topGlow = this.add.graphics();
     for (let i = 0; i < 15; i++) {
       const alpha = 0.4 - i * 0.025;
-      topGlow.fillStyle(0xff6644, Math.max(0, alpha));
+      topGlow.fillStyle(themeService.getNumber('game.dangerGlow'), Math.max(0, alpha));
       topGlow.fillRect(0, zoneY - i * 3, GAME_AREA_WIDTH, 3);
     }
     topGlow.setDepth(6);
@@ -138,6 +148,7 @@ export class GameScene extends Phaser.Scene {
   createDangerLineEffects(zoneY: number) {
     const glowLine = this.add.graphics();
     glowLine.setDepth(6);
+    const dangerColor = themeService.getNumber('accent.danger');
 
     this.tweens.add({
       targets: { intensity: 0 },
@@ -154,7 +165,7 @@ export class GameScene extends Phaser.Scene {
         for (let i = 0; i < 8; i++) {
           const alpha = 0.15 * intensity * (1 - i * 0.1);
           const width = 3 + i * 2;
-          glowLine.lineStyle(width, 0xff4444, alpha);
+          glowLine.lineStyle(width, dangerColor, alpha);
           glowLine.lineBetween(0, zoneY - i * 2, GAME_AREA_WIDTH, zoneY - i * 2);
           glowLine.lineBetween(0, zoneY + i * 2, GAME_AREA_WIDTH, zoneY + i * 2);
         }
@@ -170,23 +181,21 @@ export class GameScene extends Phaser.Scene {
     const containerX = GAME_AREA_WIDTH / 2 - containerW / 2;
     const containerY = GAME_HEIGHT - 90;
 
-  
     const inputBg = this.add.graphics();
-    inputBg.fillStyle(0x050a12, 1);
+    inputBg.fillStyle(themeService.getNumber('bg.input'), 1);
     inputBg.fillRoundedRect(containerX, containerY, containerW, containerH, 12);
-    inputBg.lineStyle(2, 0x4fc3f7, 0.6);
+    inputBg.lineStyle(2, themeService.getNumber('ui.buttonBorder'), 0.6);
     inputBg.strokeRoundedRect(containerX, containerY, containerW, containerH, 12);
-    inputBg.fillStyle(0x4fc3f7, 0.1);
+    inputBg.fillStyle(themeService.getNumber('ui.buttonBorder'), 0.1);
     inputBg.fillRoundedRect(containerX + 4, containerY + 4, containerW - 8, containerH / 2 - 4, 6);
 
-  
     this.inputText = this.add.text(GAME_AREA_WIDTH / 2, containerY + containerH / 2, '', {
       fontFamily: FONT_FAMILY,
       fontSize: `${FONT_SIZE}px`,
-      color: '#4fc3f7',
+      color: themeService.getText('text.primary'),
     });
     this.inputText.setOrigin(0.5, 0.5);
-    this.inputText.setShadow(0, 0, '#4fc3f7', 10, true, true);
+    this.inputText.setShadow(0, 0, themeService.getText('text.glow'), 10, true, true);
   }
 
   handleKeyDown(event: KeyboardEvent) {
@@ -231,6 +240,7 @@ export class GameScene extends Phaser.Scene {
       this.typedInput = this.typedInput.slice(0, -1);
       audioService.playKeypress();
       this.updateInputDisplay();
+      this.wizard.onTyping();
       return;
     }
 
@@ -243,6 +253,7 @@ export class GameScene extends Phaser.Scene {
       this.typedInput += event.key.toLowerCase();
       audioService.playKeypress();
       this.updateInputDisplay();
+      this.wizard.onTyping();
     }
   }
 
@@ -261,7 +272,12 @@ export class GameScene extends Phaser.Scene {
     if (targetWord && targetWord.textValue.toLowerCase() === this.typedInput.toLowerCase()) {
       this.onWordComplete(targetWord);
     } else {
+      audioService.playTypingError();
+      if (targetWord) {
+        targetWord.speed *= 1.5;
+      }
       this.effects.showWrongWordPopup(targetWord);
+      this.wizard.onWordFail();
       this.typedInput = '';
       this.updateInputDisplay();
     }
@@ -283,7 +299,7 @@ export class GameScene extends Phaser.Scene {
     const missText = this.add.text(x, y, 'MISS', {
       fontFamily: FONT_FAMILY,
       fontSize: '36px',
-      color: '#ff4444',
+      color: themeService.getText('text.danger'),
       fontStyle: 'bold',
     });
     missText.setOrigin(0, 0.5);
@@ -322,15 +338,6 @@ export class GameScene extends Phaser.Scene {
 
   activatePower(power: PowerType) {
     this.removePowerFromStack(power);
-    this.activePower = power;
-
-    this.effects.clearOverlays();
-    this.words.forEach(w => {
-      w.frozen = false;
-      w.frozenIndicator?.destroy();
-      w.frozenIndicator = undefined;
-    });
-    this.slowFactor = 1;
 
     this.effects.showPowerFlash(power !== 'none' ? POWER_COLORS[power] : 0xffffff);
     if (power !== 'none') {
@@ -350,6 +357,8 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'ice':
         this.effects.showIceOverlay();
+        this.iceActive = true;
+        this.iceTimer = GameConfigService.getIceDuration();
         this.words.forEach(w => {
           w.frozen = true;
           const totalWidth = w.letters.reduce((sum, l) => sum + l.width, 0);
@@ -360,12 +369,12 @@ export class GameScene extends Phaser.Scene {
           w.frozenIndicator.setOrigin(0.5, 0.5);
           w.frozenIndicator.setDepth(2);
         });
-        this.powerTimer = GameConfigService.getIceDuration();
         break;
       case 'slow':
         this.effects.showSlowOverlay();
+        this.slowActive = true;
         this.slowFactor = GameConfigService.getSlowFactor();
-        this.powerTimer = GameConfigService.getSlowDuration();
+        this.slowTimer = GameConfigService.getSlowDuration();
         break;
       case 'wind':
         this.effects.showWindEffect();
@@ -413,6 +422,7 @@ export class GameScene extends Phaser.Scene {
 
     this.effects.showWordCompleteEffect(wordCenterX, wordCenterY, word.power);
     this.effects.showBurstParticles(wordCenterX, wordCenterY, word.power);
+    this.wizard.onWordSuccess();
 
     if (comboLevel) {
       this.effects.showComboPopup(word.x + 50, word.y, comboLevel.text, comboLevel.color);
@@ -469,13 +479,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   updatePowerTimer(delta: number) {
-    if (this.powerTimer > 0) {
-      this.powerTimer -= delta;
-      if (this.powerTimer <= 0) {
-        const wasIce = this.activePower === 'ice';
-        const wasSlow = this.activePower === 'slow';
-        this.activePower = 'none';
-        this.slowFactor = 1;
+    if (this.iceTimer > 0) {
+      this.iceTimer -= delta;
+      if (this.iceTimer <= 0) {
+        this.iceActive = false;
         this.words.forEach(w => {
           w.frozen = false;
           if (w.frozenIndicator) {
@@ -483,18 +490,22 @@ export class GameScene extends Phaser.Scene {
             w.frozenIndicator = undefined;
           }
         });
-        if (wasIce) {
-          this.effects.hideIceOverlay();
-        }
-        if (wasSlow) {
-          this.effects.hideSlowOverlay();
-        }
+        this.effects.hideIceOverlay();
+      }
+    }
+
+    if (this.slowTimer > 0) {
+      this.slowTimer -= delta;
+      if (this.slowTimer <= 0) {
+        this.slowActive = false;
+        this.slowFactor = 1;
+        this.effects.hideSlowOverlay();
       }
     }
   }
 
   spawnWords(delta: number) {
-    if (this.activePower === 'ice') return;
+    if (this.iceActive) return;
 
     this.spawnTimer += delta;
     const spawnDelay = Math.max(
@@ -532,7 +543,7 @@ export class GameScene extends Phaser.Scene {
     const style: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: FONT_FAMILY,
       fontSize: `${FONT_SIZE}px`,
-      color: '#ffffff',
+      color: themeService.getText('game.wordText'),
     };
 
     const letters: Phaser.GameObjects.Text[] = [];
@@ -554,13 +565,13 @@ export class GameScene extends Phaser.Scene {
 
     const container = this.add.graphics();
 
-    container.fillStyle(0x000000, 0.4);
+    container.fillStyle(themeService.getNumber('effects.shadow'), 0.4);
     container.fillRoundedRect(containerX + 3, containerY + 3, containerW, containerH, 10);
     container.fillStyle(POWER_COLORS[power], 1);
     container.fillRoundedRect(containerX, containerY, containerW, containerH, 10);
-    container.lineStyle(2, 0xffffff, power !== 'none' ? 0.3 : 0.15);
+    container.lineStyle(2, themeService.getNumber('effects.glow'), power !== 'none' ? 0.3 : 0.15);
     container.strokeRoundedRect(containerX, containerY, containerW, containerH, 10);
-    container.fillStyle(0xffffff, power !== 'none' ? 0.2 : 0.1);
+    container.fillStyle(themeService.getNumber('effects.glow'), power !== 'none' ? 0.2 : 0.1);
     container.fillRoundedRect(containerX + 4, containerY + 3, containerW - 8, containerH / 2 - 3, 6);
 
     container.setDepth(0);
@@ -615,6 +626,7 @@ export class GameScene extends Phaser.Scene {
         this.combo = 0;
         this.effects.showMissedWordEffect(word);
         this.effects.showMissPopup(word.x + 50, word.y);
+        this.wizard.onWordFail();
         audioService.playWordMissed();
         this.limitPct += GameConfigService.getProgressPctPerWord(this.level);
         if (this.limitPct >= 100) {
@@ -643,7 +655,7 @@ export class GameScene extends Phaser.Scene {
     const missText = this.add.text(x, y, 'MISS', {
       fontFamily: FONT_FAMILY,
       fontSize: '36px',
-      color: '#ff4444',
+      color: themeService.getText('text.danger'),
       fontStyle: 'bold',
     });
     missText.setOrigin(0, 0.5);
@@ -670,9 +682,9 @@ export class GameScene extends Phaser.Scene {
 
       for (let i = 0; i < word.letters.length; i++) {
         if (i < matchedLen) {
-          word.letters[i].setColor('#4CAF50');
+          word.letters[i].setColor(themeService.getText('game.wordMatched'));
         } else {
-          word.letters[i].setColor('#ffffff');
+          word.letters[i].setColor(themeService.getText('game.wordText'));
         }
       }
 
@@ -693,22 +705,23 @@ export class GameScene extends Phaser.Scene {
 
     word.container.clear();
     
-    word.container.fillStyle(0x000000, 0.4);
+    word.container.fillStyle(themeService.getNumber('effects.shadow'), 0.4);
     word.container.fillRoundedRect(containerX + 3, containerY + 3, containerW, containerH, 10);
     word.container.fillStyle(POWER_COLORS[word.power], 1);
     word.container.fillRoundedRect(containerX, containerY, containerW, containerH, 10);
-    word.container.lineStyle(2, 0xffffff, word.power !== 'none' ? 0.3 : 0.15);
+    word.container.lineStyle(2, themeService.getNumber('effects.glow'), word.power !== 'none' ? 0.3 : 0.15);
     word.container.strokeRoundedRect(containerX, containerY, containerW, containerH, 10);
-    word.container.fillStyle(0xffffff, word.power !== 'none' ? 0.2 : 0.1);
+    word.container.fillStyle(themeService.getNumber('effects.glow'), word.power !== 'none' ? 0.2 : 0.1);
     word.container.fillRoundedRect(containerX + 4, containerY + 3, containerW - 8, containerH / 2 - 3, 6);
 
     if (isFocused) {
-      word.container.lineStyle(3, 0x4fc3f7, 1);
+      word.container.lineStyle(3, themeService.getNumber('ui.buttonBorder'), 1);
       word.container.strokeRoundedRect(containerX - 4, containerY - 4, containerW + 8, containerH + 8, 12);
     }
   }
 
   resetGame() {
+    this.wizard.destroy();
     this.words.forEach(w => {
       w.letters.forEach(l => l.destroy());
       w.container?.destroy();
@@ -725,12 +738,15 @@ export class GameScene extends Phaser.Scene {
     this.powerStack = [];
     this.gameState = 'playing';
     this.slowFactor = 1;
-    this.powerTimer = 0;
-    this.activePower = 'none';
+    this.iceActive = false;
+    this.iceTimer = 0;
+    this.slowActive = false;
+    this.slowTimer = 0;
     this.spawnTimer = 0;
     this.combo = 0;
     this.effects.clearOverlays();
     this.events.emit('gameReset');
+    this.createWizard();
     this.updateInputDisplay();
     this.events.emit('gameDataUpdate', this.getGameData());
   }
@@ -754,8 +770,10 @@ export class GameScene extends Phaser.Scene {
     this.words = [];
     this.typedInput = '';
     this.spawnTimer = 0;
-    this.activePower = 'none';
-    this.powerTimer = 0;
+    this.iceActive = false;
+    this.iceTimer = 0;
+    this.slowActive = false;
+    this.slowTimer = 0;
     this.slowFactor = 1;
     this.effects.clearOverlays();
     this.gameState = 'playing';

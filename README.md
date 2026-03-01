@@ -29,6 +29,12 @@ Collect power words to activate special abilities:
 | ⏱️ **Slow** | Slows falling speed for 5 seconds |
 | 💨 **Wind** | Resets the danger (LIMIT) bar to 0% |
 
+### Themes
+
+The game features multiple visual themes:
+- **Cyberpunk** (default): Neon cyberpunk aesthetic with grid floor and city skyline
+- **Alchemist**: Mystical wizard's study with animated wizard character, magical effects, and alchemical atmosphere
+
 ---
 
 ## 🚀 Quick Start
@@ -57,12 +63,16 @@ Open http://localhost:3000 in your browser.
 ```
 .
 ├── src/
-│   ├── main.ts           # Entry point, scene registration
-│   ├── scenes/           # Phaser scenes (Menu, Game, UI, Countdown)
-│   ├── config/           # Game constants, colors
-│   ├── data/             # Word lists (JSON)
-│   ├── services/         # Game services (WordService)
-│   └── types/            # TypeScript types
+│   ├── main.ts              # Entry point, scene registration
+│   ├── scenes/              # Phaser scenes (Menu, Game, UI, Countdown)
+│   ├── config/              # Game constants, colors
+│   ├── data/                # Word lists (JSON)
+│   ├── services/            # Game services (Audio, Storage, Theme, etc.)
+│   ├── themes/              # Theme definitions and styling
+│   ├── ui/                  # UI components (buttons, progress bars)
+│   ├── managers/            # Effect managers
+│   └── types/               # TypeScript types
+├── docs/                    # Documentation
 ├── index.html
 ├── package.json
 └── vite.config.ts

@@ -129,6 +129,11 @@ class AudioServiceImpl {
     this.playTone(800 + Math.random() * 200, 0.05, 'sine', { volume: 0.3 });
   }
 
+  playTypingError() {
+    this.playTone(200, 0.15, 'sawtooth', { volume: 0.35 });
+    setTimeout(() => this.playTone(160, 0.1, 'sawtooth', { volume: 0.25 }), 40);
+  }
+
   playWordComplete() {
     this.playChord([523, 659, 784], 0.15, 'sine');
   }

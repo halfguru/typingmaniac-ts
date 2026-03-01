@@ -53,6 +53,29 @@
 
 **Typing Maniac** - Phaser 3 + TypeScript browser game. See `docs/DESIGN.md` for game mechanics and UI specs.
 
+### Themes
+
+The game supports multiple visual themes:
+- **default** - Cyberpunk/neon theme with matrix-style effects
+- **alchemist** - Magical library theme with wizard character
+
+Theme files are in `src/themes/` and include colors, fonts, and visual settings.
+
+### Key Services
+
+- `WizardRenderer` - Renders the alchemist wizard character with staff, desk, scroll, quill
+- `BackgroundRenderer` - Theme-specific backgrounds with animated elements
+- `ThemeService` - Manages theme switching and color access
+- `AudioService` - Sound effects for typing, errors, power-ups, game events
+- `GameConfigService` - Loads game parameters from JSON config
+
+### Word Mechanics
+
+- Words fall from top to bottom
+- Typing matches word prefix to highlight
+- Wrong submission (Enter) speeds up the target word by 50%
+- Word hitting red line increases LIMIT bar
+
 ## Build Commands
 
 ```bash

@@ -1,25 +1,5 @@
 import type { PowerType } from '../types';
-
-export const COLORS = {
-  BG_DARK: 0x1a4a4a,
-  BG_PANEL: 0x143c3c,
-  ACCENT_BLUE: 0x4fc3f7,
-  ACCENT_WARM: 0xff8c42,
-  TEXT: 0xffffff,
-  PROGRESS_BG: 0x282828,
-  PROGRESS_FILL: 0x4CAF50,
-  LIMIT_FILL: 0xC83232,
-  DANGER: 0xC83C3C,
-  INPUT: 0x4fc3f7,
-  TYPED: 0x4CAF50,
-  FROZEN: 0x64b4ff,
-  SCROLL: 0x8b5a2b,
-  SCROLL_LIGHT: 0xd2b48c,
-  POWER_FIRE: 0xff6b35,
-  POWER_ICE: 0x64b5f6,
-  POWER_WIND: 0xba68c8,
-  POWER_SLOW: 0xffb74d,
-} as const;
+import { themeService } from '../services/ThemeService';
 
 export const GAME_WIDTH = 1920;
 export const GAME_HEIGHT = 1080;
@@ -30,7 +10,8 @@ export const DANGER_ZONE_Y = GAME_HEIGHT - 150;
 export const FONT_SIZE = 42;
 export const FONT_SMALL = 33;
 export const FONT_LARGE = 54;
-export const FONT_FAMILY = 'Fredoka, Arial, sans-serif';
+export const FONT_FAMILY = themeService.fonts.primary;
+export const FONT_MONO = themeService.fonts.mono;
 
 export const MAX_POWER_STACK = 6;
 
@@ -50,11 +31,11 @@ export const POWER_SYMBOLS: Record<PowerType, string> = {
 };
 
 export const POWER_COLORS: Record<PowerType, number> = {
-  none: 0x1a3a4a,
-  fire: COLORS.POWER_FIRE,
-  ice: COLORS.POWER_ICE,
-  wind: COLORS.POWER_WIND,
-  slow: COLORS.POWER_SLOW,
+  none: themeService.getNumber('bg.panel'),
+  fire: themeService.getNumber('powers.fire'),
+  ice: themeService.getNumber('powers.ice'),
+  wind: themeService.getNumber('powers.wind'),
+  slow: themeService.getNumber('powers.slow'),
 };
 
 export const POWER_NAMES: Record<PowerType, string> = {
@@ -64,3 +45,13 @@ export const POWER_NAMES: Record<PowerType, string> = {
   wind: 'WIND',
   slow: 'SLOW',
 };
+
+export const COLORS = {
+  MATRIX_GREEN: themeService.getNumber('accent.primary'),
+  MATRIX_DARK: themeService.getNumber('bg.secondary'),
+  MATRIX_BRIGHT: themeService.getNumber('accent.success'),
+  DANGER: themeService.getNumber('accent.danger'),
+  PROGRESS_BG: themeService.getNumber('bg.panel'),
+  PROGRESS_FILL: themeService.getNumber('accent.primary'),
+  LIMIT_FILL: themeService.getNumber('accent.danger'),
+} as const;

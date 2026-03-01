@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FONT_FAMILY } from '../config/constants';
 import { audioService } from '../services/AudioService';
 import { BackgroundRenderer } from '../services/BackgroundRenderer';
+import { themeService } from '../services/ThemeService';
 
 export class CountdownScene extends Phaser.Scene {
   private fadeOverlay?: Phaser.GameObjects.Rectangle;
@@ -33,7 +34,7 @@ export class CountdownScene extends Phaser.Scene {
       const textObj = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, item.text, {
         fontFamily: FONT_FAMILY,
         fontSize: item.text === 'Start typing!' ? '56px' : '120px',
-        color: '#4fc3f7',
+        color: themeService.getText('text.primary'),
         fontStyle: 'bold',
       });
       textObj.setOrigin(0.5, 0.5);
@@ -69,7 +70,7 @@ export class CountdownScene extends Phaser.Scene {
   }
 
   createFadeOverlay() {
-    this.fadeOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1);
+    this.fadeOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, themeService.getNumber('bg.dark'), 1);
     this.fadeOverlay.setDepth(1000);
 
     this.tweens.add({

@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, FONT_FAMILY } from '../config/constants';
 import { storageService } from '../services/StorageService';
 import { audioService } from '../services/AudioService';
 import { BackgroundRenderer } from '../services/BackgroundRenderer';
+import { themeService } from '../services/ThemeService';
 
 export class MenuScene extends Phaser.Scene {
   private tutorialOverlay?: Phaser.GameObjects.Container;
@@ -20,15 +21,15 @@ export class MenuScene extends Phaser.Scene {
     const centerY = GAME_HEIGHT / 2;
 
     const titleContainer = this.add.graphics();
-    titleContainer.fillStyle(0x050a12, 0.8);
+    titleContainer.fillStyle(themeService.getNumber('bg.sidebar'), 0.8);
     titleContainer.fillRoundedRect(centerX - 350, centerY - 180, 700, 140, 20);
-    titleContainer.lineStyle(2, 0x4fc3f7, 0.5);
+    titleContainer.lineStyle(2, themeService.getNumber('ui.panelBorder'), 0.5);
     titleContainer.strokeRoundedRect(centerX - 350, centerY - 180, 700, 140, 20);
 
     const title = this.add.text(centerX, centerY - 120, 'TYPING MANIAC', {
       fontFamily: FONT_FAMILY,
       fontSize: '80px',
-      color: '#4fc3f7',
+      color: themeService.getText('text.primary'),
       fontStyle: 'bold',
     });
     title.setOrigin(0.5, 0.5);
@@ -40,15 +41,15 @@ export class MenuScene extends Phaser.Scene {
     const buttonY = centerY + 50;
 
     const playButtonBg = this.add.graphics();
-    playButtonBg.fillStyle(0x050a12, 0.6);
+    playButtonBg.fillStyle(themeService.getNumber('bg.sidebar'), 0.6);
     playButtonBg.fillRoundedRect(buttonX - buttonW / 2 + 4, buttonY - buttonH / 2 + 4, buttonW, buttonH, 16);
 
     const playButton = this.add.graphics();
     const drawPlayButton = (hover: boolean) => {
       playButton.clear();
-      playButton.fillStyle(hover ? 0x0a2535 : 0x050a12, 1);
+      playButton.fillStyle(hover ? themeService.getNumber('ui.buttonHover') : themeService.getNumber('ui.buttonBg'), 1);
       playButton.fillRoundedRect(buttonX - buttonW / 2, buttonY - buttonH / 2, buttonW, buttonH, 16);
-      playButton.lineStyle(2, hover ? 0x4fc3f7 : 0x4fc3f7, hover ? 1 : 0.6);
+      playButton.lineStyle(2, themeService.getNumber('ui.buttonBorder'), hover ? 1 : 0.6);
       playButton.strokeRoundedRect(buttonX - buttonW / 2, buttonY - buttonH / 2, buttonW, buttonH, 16);
     };
     drawPlayButton(false);
@@ -59,7 +60,7 @@ export class MenuScene extends Phaser.Scene {
     const playText = this.add.text(buttonX, buttonY, '▶ PLAY', {
       fontFamily: FONT_FAMILY,
       fontSize: '40px',
-      color: '#ffffff',
+      color: themeService.getText('game.wordText'),
       fontStyle: 'bold',
     });
     playText.setOrigin(0.5, 0.5);
@@ -154,9 +155,9 @@ export class MenuScene extends Phaser.Scene {
     const button = this.add.graphics();
     const drawButton = (hover: boolean) => {
       button.clear();
-      button.fillStyle(hover ? 0x0a2535 : 0x050a12, 1);
+      button.fillStyle(hover ? themeService.getNumber('ui.buttonHover') : themeService.getNumber('ui.buttonBg'), 1);
       button.fillRoundedRect(x - w / 2, y - h / 2, w, h, 10);
-      button.lineStyle(2, hover ? 0x4fc3f7 : 0x4fc3f7, hover ? 0.8 : 0.5);
+      button.lineStyle(2, themeService.getNumber('ui.buttonBorder'), hover ? 0.8 : 0.5);
       button.strokeRoundedRect(x - w / 2, y - h / 2, w, h, 10);
     };
     drawButton(false);
@@ -164,7 +165,7 @@ export class MenuScene extends Phaser.Scene {
     const text = this.add.text(x, y, label, {
       fontFamily: FONT_FAMILY,
       fontSize: '20px',
-      color: '#ffffff',
+      color: themeService.getText('game.wordText'),
       fontStyle: 'bold',
     });
     text.setOrigin(0.5, 0.5);
@@ -184,7 +185,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   createFadeOverlay() {
-    this.fadeOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 1);
+    this.fadeOverlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, themeService.getNumber('effects.shadow'), 1);
     this.fadeOverlay.setDepth(1000);
 
     this.tweens.add({
@@ -224,10 +225,10 @@ export class MenuScene extends Phaser.Scene {
     const panelY = GAME_HEIGHT / 2 - panelH / 2;
 
     const panel = this.add.graphics();
-    panel.fillStyle(0x050a12, 1);
+    panel.fillStyle(themeService.getNumber('bg.sidebar'), 1);
     panel.fillRoundedRect(panelX, panelY, panelW, panelH, 20);
     for (let i = 0; i < 3; i++) {
-      panel.lineStyle(2 - i * 0.5, 0x4fc3f7, 0.4 - i * 0.1);
+      panel.lineStyle(2 - i * 0.5, themeService.getNumber('ui.panelBorder'), 0.4 - i * 0.1);
       panel.strokeRoundedRect(panelX + i, panelY + i, panelW - i * 2, panelH - i * 2, 20 - i);
     }
     this.tutorialOverlay.add(panel);
@@ -235,7 +236,7 @@ export class MenuScene extends Phaser.Scene {
     const title = this.add.text(GAME_WIDTH / 2, panelY + 40, 'HOW TO PLAY', {
       fontFamily: FONT_FAMILY,
       fontSize: '42px',
-      color: '#4fc3f7',
+      color: themeService.getText('text.primary'),
       fontStyle: 'bold',
     });
     title.setOrigin(0.5, 0.5);
@@ -265,7 +266,7 @@ export class MenuScene extends Phaser.Scene {
       const text = this.add.text(panelX + 90, y, instruction.text, {
         fontFamily: FONT_FAMILY,
         fontSize: '22px',
-        color: '#ffffff',
+        color: themeService.getText('game.wordText'),
       });
       text.setOrigin(0, 0.5);
       this.tutorialOverlay.add(text);
@@ -276,7 +277,7 @@ export class MenuScene extends Phaser.Scene {
     const closeText = this.add.text(GAME_WIDTH / 2, panelY + panelH - 40, 'Press ESC or click to close', {
       fontFamily: FONT_FAMILY,
       fontSize: '20px',
-      color: '#7ab8b8',
+      color: themeService.getText('text.secondary'),
     });
     closeText.setOrigin(0.5, 0.5);
     this.tutorialOverlay.add(closeText);
@@ -323,7 +324,7 @@ export class MenuScene extends Phaser.Scene {
     const panelY = GAME_HEIGHT / 2 - panelH / 2;
 
     const panel = this.add.graphics();
-    panel.fillStyle(0x050a12, 1);
+    panel.fillStyle(themeService.getNumber('bg.sidebar'), 1);
     panel.fillRoundedRect(panelX, panelY, panelW, panelH, 20);
     for (let i = 0; i < 3; i++) {
       panel.lineStyle(2 - i * 0.5, 0xffd700, 0.4 - i * 0.1);
@@ -347,7 +348,7 @@ export class MenuScene extends Phaser.Scene {
       const noScores = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'No scores yet!', {
         fontFamily: FONT_FAMILY,
         fontSize: '28px',
-        color: '#7ab8b8',
+        color: themeService.getText('text.secondary'),
       });
       noScores.setOrigin(0.5, 0.5);
       this.leaderboardOverlay.add(noScores);
@@ -358,7 +359,7 @@ export class MenuScene extends Phaser.Scene {
         const row = this.add.text(panelX + 40, y, `${medals[i]}  ${this.formatNumber(entry.score)}  Lvl ${entry.level}`, {
           fontFamily: FONT_FAMILY,
           fontSize: '28px',
-          color: i === 0 ? '#ffd700' : '#ffffff',
+          color: i === 0 ? '#ffd700' : themeService.getText('game.wordText'),
           fontStyle: i === 0 ? 'bold' : 'normal',
         });
         row.setOrigin(0, 0.5);
@@ -367,7 +368,7 @@ export class MenuScene extends Phaser.Scene {
         const date = this.add.text(panelX + panelW - 40, y, entry.date, {
           fontFamily: FONT_FAMILY,
           fontSize: '20px',
-          color: '#7ab8b8',
+          color: themeService.getText('text.secondary'),
         });
         date.setOrigin(1, 0.5);
         this.leaderboardOverlay.add(date);
@@ -379,7 +380,7 @@ export class MenuScene extends Phaser.Scene {
     const closeText = this.add.text(GAME_WIDTH / 2, panelY + panelH - 40, 'Press ESC or click to close', {
       fontFamily: FONT_FAMILY,
       fontSize: '20px',
-      color: '#7ab8b8',
+      color: themeService.getText('text.secondary'),
     });
     closeText.setOrigin(0.5, 0.5);
     this.leaderboardOverlay.add(closeText);
@@ -423,7 +424,7 @@ export class MenuScene extends Phaser.Scene {
       const word = this.add.text(x, y, this.getRandomWord(), {
         fontFamily: FONT_FAMILY,
         fontSize: '24px',
-        color: '#4fc3f7',
+        color: themeService.getText('text.primary'),
       });
       word.setAlpha(0.12);
       word.setOrigin(0.5, 0.5);

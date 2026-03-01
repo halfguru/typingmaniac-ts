@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FONT_FAMILY } from '../config/constants';
 import { audioService } from '../services/AudioService';
 import { BackgroundRenderer } from '../services/BackgroundRenderer';
+import { themeService } from '../services/ThemeService';
 
 export class SettingsScene extends Phaser.Scene {
   private sliders: {
@@ -28,16 +29,16 @@ export class SettingsScene extends Phaser.Scene {
     const panelH = 460;
 
     const panel = this.add.graphics();
-    panel.fillStyle(0x050a12, 1);
+    panel.fillStyle(themeService.getNumber('bg.sidebar'), 1);
     panel.fillRoundedRect(centerX - panelW / 2, centerY - panelH / 2, panelW, panelH, 20);
     
     for (let i = 0; i < 3; i++) {
-      panel.lineStyle(2 - i * 0.5, 0x4fc3f7, 0.4 - i * 0.1);
+      panel.lineStyle(2 - i * 0.5, themeService.getNumber('ui.panelBorder'), 0.4 - i * 0.1);
       panel.strokeRoundedRect(centerX - panelW / 2 + i, centerY - panelH / 2 + i, panelW - i * 2, panelH - i * 2, 20 - i);
     }
     
     const panelGlow = this.add.graphics();
-    panelGlow.fillStyle(0x4fc3f7, 0.03);
+    panelGlow.fillStyle(themeService.getNumber('ui.panelBorder'), 0.03);
     panelGlow.fillRoundedRect(centerX - panelW / 2 + 10, centerY - panelH / 2 + 10, panelW - 20, panelH - 20, 15);
     this.tweens.add({
       targets: panelGlow,
@@ -48,15 +49,14 @@ export class SettingsScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
 
-  
     const title = this.add.text(centerX, centerY - 190, 'SETTINGS', {
       fontFamily: FONT_FAMILY,
       fontSize: '48px',
-      color: '#4fc3f7',
+      color: themeService.getText('text.primary'),
       fontStyle: 'bold',
     });
     title.setOrigin(0.5, 0.5);
-    title.setShadow(0, 0, '#4fc3f7', 12, true, true);
+    title.setShadow(0, 0, themeService.getText('text.glow'), 12, true, true);
   
     const settings = audioService.getSettings();
   
@@ -75,7 +75,7 @@ export class SettingsScene extends Phaser.Scene {
   drawBackground() {
     BackgroundRenderer.draw(this);
     const overlay = this.add.graphics();
-    overlay.fillStyle(0x000000, 0.5);
+    overlay.fillStyle(themeService.getNumber('effects.shadow'), 0.5);
     overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   }
 
@@ -83,7 +83,7 @@ export class SettingsScene extends Phaser.Scene {
     const labelText = this.add.text(x - 210, y - 18, label, {
       fontFamily: FONT_FAMILY,
       fontSize: '16px',
-      color: '#7ab8b8',
+      color: themeService.getText('text.secondary'),
     });
     labelText.setOrigin(0, 0.5);
 
@@ -93,27 +93,27 @@ export class SettingsScene extends Phaser.Scene {
     const trackY = y + 8;
 
     const track = this.add.graphics();
-    track.fillStyle(0x0a1520, 1);
+    track.fillStyle(themeService.getNumber('bg.slot'), 1);
     track.fillRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW, trackH, 5);
-    track.lineStyle(1, 0x4fc3f7, 0.3);
+    track.lineStyle(1, themeService.getNumber('ui.panelBorder'), 0.3);
     track.strokeRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW, trackH, 5);
   
     const fill = this.add.graphics();
     const fillW = trackW * value;
-    fill.fillStyle(0x4fc3f7, 1);
+    fill.fillStyle(themeService.getNumber('ui.panelBorder'), 1);
     fill.fillRoundedRect(trackX - trackW / 2, trackY - trackH / 2, fillW, trackH, 5);
   
     const handleX = trackX - trackW / 2 + trackW * value;
-    const handle = this.add.circle(handleX, trackY, 12, 0x4fc3f7, 1);
-    handle.setStrokeStyle(2, 0xffffff, 0.9);
+    const handle = this.add.circle(handleX, trackY, 12, themeService.getNumber('ui.panelBorder'), 1);
+    handle.setStrokeStyle(2, themeService.getNumber('effects.glow'), 0.9);
   
     const valueText = this.add.text(x + 110, y, `${Math.round(value * 100)}%`, {
       fontFamily: FONT_FAMILY,
       fontSize: '16px',
-      color: '#4fc3f7',
+      color: themeService.getText('text.primary'),
     });
     valueText.setOrigin(0.5, 0.5);
-    valueText.setShadow(0, 0, '#4fc3f7', 6, true, true);
+    valueText.setShadow(0, 0, themeService.getText('text.glow'), 6, true, true);
   
     const sliderData = { track, fill, handle, value, type, valueText, trackX, trackW };
     this.sliders.push(sliderData);
@@ -127,7 +127,7 @@ export class SettingsScene extends Phaser.Scene {
   
       sliderData.value = newValue;
       fill.clear();
-      fill.fillStyle(0x4fc3f7, 1);
+      fill.fillStyle(themeService.getNumber('ui.panelBorder'), 1);
       fill.fillRoundedRect(trackX - trackW / 2, trackY - trackH / 2, trackW * newValue, trackH, 6);
   
       handle.setPosition(trackX - trackW / 2 + trackW * newValue, trackY);
@@ -162,9 +162,9 @@ export class SettingsScene extends Phaser.Scene {
     const button = this.add.graphics();
     const drawButton = (isMuted: boolean) => {
       button.clear();
-      button.fillStyle(isMuted ? 0x3a1520 : 0x050a12, 1);
+      button.fillStyle(isMuted ? 0x3a1520 : themeService.getNumber('ui.buttonBg'), 1);
       button.fillRoundedRect(x - buttonW / 2, y - buttonH / 2, buttonW, buttonH, 10);
-      button.lineStyle(2, isMuted ? 0xff6666 : 0x4fc3f7, 0.7);
+      button.lineStyle(2, isMuted ? themeService.getNumber('accent.danger') : themeService.getNumber('ui.buttonBorder'), 0.7);
       button.strokeRoundedRect(x - buttonW / 2, y - buttonH / 2, buttonW, buttonH, 10);
     };
     drawButton(muted);
@@ -173,7 +173,7 @@ export class SettingsScene extends Phaser.Scene {
     const text = this.add.text(x, y, `${icon} ${muted ? 'MUTED' : 'SOUND ON'}`, {
       fontFamily: FONT_FAMILY,
       fontSize: '18px',
-      color: '#ffffff',
+      color: themeService.getText('game.wordText'),
       fontStyle: 'bold',
     });
     text.setOrigin(0.5, 0.5);
@@ -196,9 +196,9 @@ export class SettingsScene extends Phaser.Scene {
     const button = this.add.graphics();
     const drawButton = (hover: boolean) => {
       button.clear();
-      button.fillStyle(hover ? 0x0a2535 : 0x050a12, 1);
+      button.fillStyle(hover ? themeService.getNumber('ui.buttonHover') : themeService.getNumber('ui.buttonBg'), 1);
       button.fillRoundedRect(x - buttonW / 2, y - buttonH / 2, buttonW, buttonH, 10);
-      button.lineStyle(2, 0x4fc3f7, hover ? 0.9 : 0.5);
+      button.lineStyle(2, themeService.getNumber('ui.buttonBorder'), hover ? 0.9 : 0.5);
       button.strokeRoundedRect(x - buttonW / 2, y - buttonH / 2, buttonW, buttonH, 10);
     };
     drawButton(false);
@@ -206,7 +206,7 @@ export class SettingsScene extends Phaser.Scene {
     const text = this.add.text(x, y, '← BACK', {
       fontFamily: FONT_FAMILY,
       fontSize: '20px',
-      color: '#ffffff',
+      color: themeService.getText('game.wordText'),
       fontStyle: 'bold',
     });
     text.setOrigin(0.5, 0.5);
