@@ -55,9 +55,24 @@ Add high score display, tutorial, scene transitions, audio, settings, global lea
 - [x] Track leaderboard errors
 - [x] Make Sentry optional (no credentials = console only)
 
-### 9. Optional Dependencies
+### 9. Analytics (PostHog)
+- [x] Create `AnalyticsService` for event tracking
+- [x] Add PostHog integration with environment variables
+- [x] Track game events (starts, overs, levels, power-ups)
+- [x] Track UI events (tutorial, settings, leaderboard)
+- [x] Track auth events (sign in method, sign out)
+- [x] Make PostHog optional (no credentials = console only)
+
+### 10. Optional Dependencies
 - [x] Supabase is now optional (skip AuthScene if not configured)
 - [x] Local leaderboard fallback when Supabase not configured
+- [x] All services work independently
+
+### 11. Versioning & Deployment
+- [x] Add CHANGELOG.md following Keep a Changelog format
+- [x] Display version badge in menu
+- [x] Update deploy.yml to use GitHub Secrets
+- [x] Update README with deployment instructions
 
 ## Review
 
@@ -67,18 +82,22 @@ All features implemented and TypeScript compiles successfully.
 - `src/services/AudioService.ts` - Sound management with Web Audio API
 - `src/services/AuthService.ts` - Supabase auth and leaderboard
 - `src/services/ObservabilityService.ts` - Sentry error tracking
+- `src/services/AnalyticsService.ts` - PostHog analytics
 - `src/scenes/SettingsScene.ts` - Volume control UI
 - `src/scenes/AuthScene.ts` - Login UI with OAuth buttons
-- `.env.example` - Placeholder credentials (Supabase, Sentry)
+- `CHANGELOG.md` - Version history
+- `.env.example` - Placeholder credentials (Supabase, Sentry, PostHog)
 
 ### Files Modified:
-- `src/main.ts` - Added SettingsScene, AuthScene, enabled DOM container, init observability
-- `src/scenes/MenuScene.ts` - Fixed tutorial, added settings/leaderboard buttons, transitions, local leaderboard fallback
-- `src/scenes/CountdownScene.ts` - Added audio and transitions, ring animation
-- `src/scenes/GameScene.ts` - Added audio hooks and transitions, ESC to menu
-- `src/scenes/UIScene.ts` - Enhanced game over with leaderboard position, ESC option
-- `src/services/StorageService.ts` - Added leaderboard storage
+- `src/main.ts` - Init observability and analytics
+- `src/scenes/MenuScene.ts` - Version badge, local leaderboard, analytics tracking
+- `src/scenes/CountdownScene.ts` - Ring animation with particles
+- `src/scenes/GameScene.ts` - Analytics tracking, ESC to menu
+- `src/scenes/UIScene.ts` - ESC option on game over
+- `src/services/AuthService.ts` - Analytics integration
 - `src/vite-env.d.ts` - TypeScript types for Vite env variables
+- `.github/workflows/deploy.yml` - GitHub Secrets for env vars
+- `README.md` - Configuration docs
 
 ### How to Test:
 1. Run `npm run dev`
