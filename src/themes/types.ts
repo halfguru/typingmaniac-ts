@@ -80,4 +80,4 @@ export interface Theme {
   fonts: ThemeFonts;
 }
 
-export type ThemeName = 'default';
+export type ThemeName = 'default' | 'alchemist';
