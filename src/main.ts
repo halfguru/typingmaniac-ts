@@ -17,7 +17,7 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  backgroundColor: 0x1a4a4a,
+  backgroundColor: 0x000000,
   roundPixels: true,
   dom: {
     createContainer: true,
